@@ -26,11 +26,6 @@ CC_DEBUG_FLAGS_RELEASE=-s
 ASM_DEBUG_FLAGS_DEBUG=-g -DDEBUG
 ASM_DEBUG_FLAGS_RELEASE=
 
-# x87 or x86?
-SOFTSYNTH_VER=_x87
-#SOFTSYNTH_VER=_x86
-SOFTSYNTH=softsynth$(SOFTSYNTH_VER).asm
-
 # Comment this out to use OS loading of dlls
 #MANUAL_DLL_LOAD=doit
 
@@ -38,7 +33,7 @@ SOFTSYNTH=softsynth$(SOFTSYNTH_VER).asm
 ASMTARGET_win32=-f win32 -DBIT32
 OBJ_POSTFIX_win32=obj
 LINKOPT_INTRO_win32=
-LINKOPT_AED_win32= -lSDL -GL
+LINKOPT_EDITOR_win32= -lSDL -GL
 ASMOPT_win32=-DPREFIX -DDLL -DRET
 CC_FLAGS_win32=
 
@@ -46,7 +41,7 @@ CC_FLAGS_win32=
 ASMTARGET_cygwin=-felf32 -gdwarf -s -DBIT32
 OBJ_POSTFIX_cygwin=o
 LINKOPT_INTRO_cygwin=-lc -m32
-LINKOPT_AED_cygwin=-m32 -lSDL -luGL
+LINKOPT_EDITOR_cygwin=-m32 -lSDL -luGL
 ASMOPT_cygwin=-DPREFIX -DSO -DRET
 PACK_cygwin=./pack.sh
 CC_FLAGS_cygwin=-m32
@@ -58,27 +53,27 @@ REMOVE_ELF_HEADER_cygwin = echo
 ASMTARGET_linux32=-felf32 -gdwarf -s -DBIT32
 OBJ_POSTFIX_linux32=o
 LINKOPT_INTRO_linux32=-lc -m32 -nostdlib
-LINKOPT_AED_linux32=-m32 -lGL -lSDL
+LINKOPT_EDITOR_linux32=-m32 -lGL -lSDL
 ASMOPT_linux32=-DSO
-PACK_linux32=./pack.sh
+PACK_linux32=../scripts/pack.sh
 CC_FLAGS_linux32=-m32
 STRIP_linux32=../../ELFkickers/sstrip/sstrip -z
-REMOVE_ELF_HEADER_linux32 = ./remove_elf_header.py
+REMOVE_ELF_HEADER_linux32 = ../scripts/fix_elf_header.py
 
 # 64-bit Linux
 ASMTARGET_linux64=-felf64 -gdwarf -s -DBIT64
 OBJ_POSTFIX_linux64=o
 LINKOPT_INTRO_linux64=-lc -m64 -nostdlib
-LINKOPT_AED_linux64=-lSDL -lGL
+LINKOPT_EDITOR_linux64=-lSDL -lGL
 ASMOPT_linux64=-DSO
-PACK_linux64=./pack.sh
+PACK_linux64=../scripts/pack.sh
 CC_FLAGS_linux64=
 
 # Set generic flags
 ASMTARGET=$(ASMTARGET_$(TARGET))
 OBJ_POSTFIX=$(OBJ_POSTFIX_$(TARGET))
 LINKOPT_INTRO=$(LINKOPT_INTRO_$(TARGET))
-LINKOPT_AED=$(LINKOPT_AED_$(TARGET))
+LINKOPT_EDITOR=$(LINKOPT_EDITOR_$(TARGET))
 ASMOPT=$(ASMOPT_$(TARGET))
 PACK=$(PACK_$(TARGET))
 STRIP=$(STRIP_$(TARGET))

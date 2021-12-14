@@ -13,12 +13,14 @@
 	cextern	SDL_SetVideoMode
 	cextern	softsynth_play
 	cextern	softsynth_init
+	cglobal	_start
 	cglobal	start
 	cglobal	main
 ; 	cglobal	mainCRTStartup
 
 	section .text
 ; mainCRTStartup:
+_start:
 start:
 main:
  	pushad

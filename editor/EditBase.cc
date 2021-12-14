@@ -3,7 +3,7 @@
 
 #include <fstream>
 
-#include "glTexFont-r6/glTexFont.h"
+#include "glTexFont.h"
 #include "EditBase.hh"
 #include "Display.hh"
 #include "softsynth.h"

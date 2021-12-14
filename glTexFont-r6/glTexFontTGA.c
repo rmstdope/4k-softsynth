@@ -158,8 +158,9 @@ unsigned char *fontGetData (FILE *s, int sz, int iBits)
 		return fontGetRGBA (s, sz);
 	else if (iBits == 24)
 		return fontGetRGB (s, sz);	
-    else if (iBits == 8)
-        return fontGetGray (s, sz);
+	else if (iBits == 8)
+		return fontGetGray (s, sz);
+	return 0;
 }
 /*
 =============

@@ -102,7 +102,12 @@ AudioEditor::Initialize()
 
                 printf("Initializing glTexFont...");
                 fflush(stdout);
-                fontLoad ("font.tga");
+                char font[] = "font.tga";
+                if (fontLoad(font) != 1) {
+                    printf("Error loading font \"%s\"\n", font);
+                    fflush(stdout);
+                    return 0;
+                }
                 printf("done\n");
 
                 // Start audio
