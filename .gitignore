@@ -3,4 +3,7 @@ core
 intro
 4k
 aed
+intro.exe
+aed.exe
+*.stackdump
 *~

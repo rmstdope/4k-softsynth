@@ -10,9 +10,9 @@ INC_DIRS=-IglTexFont-r6
 # Choose one of the following targets
 # At present time, only linux is verified to work
 #TARGET=win32
-#TARGET=cygwin
+TARGET=cygwin
 #TARGET=linux64
-TARGET=linux32
+#TARGET=linux32
 
 # FULL = FULLSCREEN for fullscreen mode, something else for window
 FULL=WINDOW
@@ -33,12 +33,14 @@ LINKOPT_AED_win32= -lSDL -GL
 ASMOPT_win32=-DPREFIX -DDLL -DRET
 CC_FLAGS_win32=
 
-ASMTARGET_cygwin=-f gnuwin32 -DBIT32
+ASMTARGET_cygwin=-felf32 -gdwarf -s -DBIT32
 OBJ_POSTFIX_cygwin=o
-LINKOPT_INTRO_cygwin=#-nostdlib
-LINKOPT_AED_cygwin= -lSDL -lopengl32
-ASMOPT_cygwin=-DPREFIX -DDLL -DRET
+LINKOPT_INTRO_cygwin=-lc -m32
+LINKOPT_AED_cygwin=-m32 -lSDL -luGL
+ASMOPT_cygwin=-DPREFIX -DSO -DRET
+PACK_cygwin=./pack.sh
 CC_FLAGS_cygwin=
+EXEC_SUFFIX_cygwin=.exe
 
 ASMTARGET_linux32=-felf32 -gdwarf -s -DBIT32
 OBJ_POSTFIX_linux32=o
@@ -81,12 +83,16 @@ AED_OBJ=	AudioEditor.$(OBJ_POSTFIX)				\
 
 TEST_OBJ=	Test.$(OBJ_POSTFIX)
 
-UNPACKED = intro
+UNPACKED = intro$(EXEC_SUFFIX_$(TARGET))
 NAME = 4k
 AED = aed
 TEST = test
-STRIP = ../../ELFkickers/sstrip/sstrip -z
-REMOVE_ELF_HEADER = ./remove_elf_header.py
+STRIP_linux32=../../ELFkickers/sstrip/sstrip -z
+STRIP_cygwin=strip
+STRIP=$(STRIP_$(TARGET))
+REMOVE_ELF_HEADER_linux32 = ./remove_elf_header.py
+REMOVE_ELF_HEADER_cygwin = echo
+REMOVE_ELF_HEADER=$(REMOVE_ELF_HEADER_$(TARGET))
 
 ASM_DEBUG_FLAGS_DEBUG=-g -DDEBUG
 ASM_DEBUG_FLAGS_RELEASE=
@@ -104,8 +110,8 @@ $(NAME): $(UNPACKED) Makefile
 
 $(UNPACKED): $(INTRO_OBJ) Makefile
 	$(CC) $(CC_FLAGS) -o $@ $(INTRO_OBJ) $(LINKOPT_INTRO)
-#	$(STRIP) $@
-#	$(REMOVE_ELF_HEADER) $@
+	$(STRIP) $@
+	$(REMOVE_ELF_HEADER) $@
 
 $(AED): $(AED_OBJ) Makefile
 	$(CC) $(CC_FLAGS) -o $@ $(AED_OBJ) $(LINKOPT_AED)
