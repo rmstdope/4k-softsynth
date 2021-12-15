@@ -30,12 +30,12 @@ ASM_DEBUG_FLAGS_RELEASE=
 #MANUAL_DLL_LOAD=doit
 
 # Win32
-ASMTARGET_win32=-f win32 -DBIT32
-OBJ_POSTFIX_win32=obj
-LINKOPT_INTRO_win32=
-LINKOPT_EDITOR_win32= -lSDL -GL
-ASMOPT_win32=-DPREFIX -DDLL -DRET
-CC_FLAGS_win32=
+#ASMTARGET_win32=-f win32 -DBIT32
+#OBJ_POSTFIX_win32=obj
+#LINKOPT_INTRO_win32=
+#LINKOPT_EDITOR_win32= -lSDL -GL
+#ASMOPT_win32=-DPREFIX -DDLL -DRET
+#CC_FLAGS_win32=
 
 # 32-bit Cygwin
 ASMTARGET_cygwin=-felf32 -gdwarf -s -DBIT32
@@ -61,13 +61,13 @@ STRIP_linux32=../../ELFkickers/sstrip/sstrip -z
 REMOVE_ELF_HEADER_linux32 = ../scripts/fix_elf_header.py
 
 # 64-bit Linux
-ASMTARGET_linux64=-felf64 -gdwarf -s -DBIT64
-OBJ_POSTFIX_linux64=o
-LINKOPT_INTRO_linux64=-lc -m64 -nostdlib
-LINKOPT_EDITOR_linux64=-lSDL -lGL
-ASMOPT_linux64=-DSO
-PACK_linux64=../scripts/pack.sh
-CC_FLAGS_linux64=
+#ASMTARGET_linux64=-felf64 -gdwarf -s -DBIT64
+#OBJ_POSTFIX_linux64=o
+#LINKOPT_INTRO_linux64=-lc -m64 -nostdlib
+#LINKOPT_EDITOR_linux64=-lSDL -lGL
+#ASMOPT_linux64=-DSO
+#PACK_linux64=../scripts/pack.sh
+#CC_FLAGS_linux64=
 
 # Set generic flags
 ASMTARGET=$(ASMTARGET_$(TARGET))
