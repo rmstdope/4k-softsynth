@@ -15,6 +15,7 @@
     Web         -- http://members.home.com/vandals1
 */
 //#define FONT_LIB_DEBUG /* un-comment for debug regions */
+#pragma warning(disable:4996)
 #include "glTexFont.h"
 #include "glTexFontTGA.h"
 #include "glTexFontDefs.h"
@@ -416,11 +417,7 @@ void fontDrawString (int xpos, int ypos, const char *s, ...)
     int vPort[4];
 	
 	va_start (msg, s);
-#ifdef _WIN32
-	_vsntprintf (buffer, FONT_MAX_LEN - 1, s, msg);	
-#else /* linux */
 	vsnprintf (buffer, FONT_MAX_LEN - 1, s, msg);	
-#endif
 	va_end (msg);
 
     /* get current viewport */

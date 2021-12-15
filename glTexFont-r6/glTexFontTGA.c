@@ -17,6 +17,7 @@
     6/11/99 - added support for 8bit images, changed commenting
     5/30/99 - original file
 */
+#pragma warning(disable:4996)
 #include "glTexFont.h"
 #include "glTexFontTGA.h"
 #include "glTexFontInclude.h"
