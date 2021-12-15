@@ -198,50 +198,50 @@ InstrumentEdit::Draw(void)
     for(int i = 0; i < INSTRUMENT_SELECTIONS; i++) {
         switch(i) {
         case INSTRUMENT_NUM:
-            sprintf_s(str, 200, "Instrument: %d", mInstrumentNum);
+            snprintf(str, 200, "Instrument: %d", mInstrumentNum);
             break;
         case INSTRUMENT_WAVEFORM:
             switch(GetWaveform(instrument_definition[mInstrumentNum].waveForm)) {
             case SINE:
-                sprintf_s(str, 200, "Waveform: Sine");
+                snprintf(str, 200, "Waveform: Sine");
                 break;
             case NOISE:
-                sprintf_s(str, 200, "Waveform: Noise");
+                snprintf(str, 200, "Waveform: Noise");
                 break;
             case SQUARE:
-                sprintf_s(str, 200, "Waveform: Square");
+                snprintf(str, 200, "Waveform: Square");
                 break;
             case SAWTOOTH:
-                sprintf_s(str, 200, "Waveform: Sawtooth");
+                snprintf(str, 200, "Waveform: Sawtooth");
                 break;
             }
             break;
         case INSTRUMENT_ATTACK:
-            sprintf_s(str, 200, "Attack: %d", instrument_definition[mInstrumentNum].attack);
+            snprintf(str, 200, "Attack: %d", instrument_definition[mInstrumentNum].attack);
             break;
         case INSTRUMENT_DECAY:
-            sprintf_s(str, 200, "Decay: %d", instrument_definition[mInstrumentNum].decay);
+            snprintf(str, 200, "Decay: %d", instrument_definition[mInstrumentNum].decay);
             break;
         case INSTRUMENT_SUSTAIN:
-            sprintf_s(str, 200, "Sustain: %.2f", instrument_definition[mInstrumentNum].sustain);
+            snprintf(str, 200, "Sustain: %.2f", instrument_definition[mInstrumentNum].sustain);
             break;
         case INSTRUMENT_RELEASE:
-            sprintf_s(str, 200, "Release: %d", instrument_definition[mInstrumentNum].release);
+            snprintf(str, 200, "Release: %d", instrument_definition[mInstrumentNum].release);
             break;
         case INSTRUMENT_SWEEP:
-            sprintf_s(str, 200, "Sweep: %.8f", instrument_definition[mInstrumentNum].sweep);
+            snprintf(str, 200, "Sweep: %.8f", instrument_definition[mInstrumentNum].sweep);
             break;
         case INSTRUMENT_MODULATION:
-            sprintf_s(str, 200, "Modulation: %.6f", instrument_definition[mInstrumentNum].modulation);
+            snprintf(str, 200, "Modulation: %.6f", instrument_definition[mInstrumentNum].modulation);
             break;
         case INSTRUMENT_DELIMITER_1:
-            sprintf_s(str, 200, "  ---  ");
+            snprintf(str, 200, "  ---  ");
             break;
         case INSTRUMENT_SAVE:
-            sprintf_s(str, 200, "Save Instrument");
+            snprintf(str, 200, "Save Instrument");
             break;
         case INSTRUMENT_LOAD:
-            sprintf_s(str, 200, "Load Instrument");
+            snprintf(str, 200, "Load Instrument");
             break;
         }
         

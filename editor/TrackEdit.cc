@@ -274,7 +274,7 @@ TrackEdit::Draw(void)
         } else {
             fontColor(color, color, color);
         }
-        sprintf_s(str, 200, "Track %d", track);
+        snprintf(str, 200, "Track %d", track);
         fontDrawString(xStart, 
                        Display::SCREEN_HEIGHT - Display::SCREEN_HEIGHT / 4, 
                        str);
@@ -301,16 +301,16 @@ TrackEdit::Draw(void)
     // Draw track menu
     for(int i = 0; i < TRACK_SELECTIONS + mNumInstruments; i++) {
         if(i == TRACK_DELIMITER_1 + mNumInstruments) {
-            sprintf_s(str, 200, "  ---  ");
+            snprintf(str, 200, "  ---  ");
         } else if(i == TRACK_SAVE + mNumInstruments) {
-            sprintf_s(str, 200, "Save Track");
+            snprintf(str, 200, "Save Track");
         } else if(i == TRACK_LOAD + mNumInstruments) {
-            sprintf_s(str, 200, "Load Track");
+            snprintf(str, 200, "Load Track");
         } else {
             if(IsMuted(i - TRACK_DELIMITER_1))
-                sprintf_s(str, 200, "Instrument %d: Muted", i - TRACK_DELIMITER_1);
+                snprintf(str, 200, "Instrument %d: Muted", i - TRACK_DELIMITER_1);
             else
-                sprintf_s(str, 200, "Instrument %d: On", i - TRACK_DELIMITER_1);
+                snprintf(str, 200, "Instrument %d: On", i - TRACK_DELIMITER_1);
         }
         
         // Draw Text

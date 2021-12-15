@@ -187,7 +187,7 @@ PatternEdit::Draw(void)
 
     // Draw pattern info
     fontSize(10);
-    sprintf_s(str, 200, "Pattern %d", mPatternNum);
+    snprintf(str, 200, "Pattern %d", mPatternNum);
     fontDrawString(Display::SCREEN_WIDTH / 4, 
                    Display::SCREEN_HEIGHT - Display::SCREEN_HEIGHT / 4, 
                    str);
@@ -205,19 +205,19 @@ PatternEdit::Draw(void)
     for(int i = 0; i < PATTERN_SELECTIONS; i++) {
         switch(i) {
         case PATTERN_NUM:
-            sprintf_s(str, 200, "Pattern: %d", mPatternNum);
+            snprintf(str, 200, "Pattern: %d", mPatternNum);
             break;
         case PATTERN_INSTRUMENT:
-            sprintf_s(str, 200, "Instrument: %d", mInstrumentNum);
+            snprintf(str, 200, "Instrument: %d", mInstrumentNum);
             break;
         case PATTERN_DELIMITER_1:
-            sprintf_s(str, 200, "  ---  ");
+            snprintf(str, 200, "  ---  ");
             break;
         case PATTERN_SAVE:
-            sprintf_s(str, 200, "Save Pattern");
+            snprintf(str, 200, "Save Pattern");
             break;
         case PATTERN_LOAD:
-            sprintf_s(str, 200, "Load Pattern");
+            snprintf(str, 200, "Load Pattern");
             break;
         }
         

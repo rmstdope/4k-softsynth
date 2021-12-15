@@ -1,8 +1,8 @@
 ; The main program
 ;	bits    32
 
-%include "debug.inc"
 %include "common.inc"
+%include "debug.inc"
 
 	cextern	SDL_Init
 	cextern	SDL_Quit
