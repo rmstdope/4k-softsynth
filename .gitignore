@@ -1,12 +1,26 @@
+# Object files
 *.o
-core
+*.obj
+
+# Binaries
 softsynth/softsynth
 softsynth/softsynth.exe
 softsynth/softsynth-packed
-softsynth/*.stackdump
 editor/editor
 editor/editor.exe
 editor/test
 editor/test.exe
-editor/*.stackdump
+
+# Core dump files
+*.stackdump
+core
+
+# Emacs backup files
 *~
+
+#Visual studio specific files
+.vs
+Debug
+*.user
+SDL.dll
+packages

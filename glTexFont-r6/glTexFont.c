@@ -417,7 +417,7 @@ void fontDrawString (int xpos, int ypos, const char *s, ...)
 	
 	va_start (msg, s);
 #ifdef _WIN32
-	_vsntprintf (buffer, FONT_MAX_LEN - 1, s, msg);	
+	vsnprintf_s(buffer, FONT_MAX_LEN, FONT_MAX_LEN - 1, s, msg);
 #else /* linux */
 	vsnprintf (buffer, FONT_MAX_LEN - 1, s, msg);	
 #endif
@@ -464,13 +464,13 @@ int fontSetColorFromToken (char *s)
 	if (*s == 'c')
 	{
 		s += 1;
-		if (sscanf (s, "(%d %d %d)", &clr[0], &clr[1], &clr[2]) != 3)
+		if (sscanf_s (s, "(%d %d %d)", &clr[0], &clr[1], &clr[2]) != 3)
 			return -1;
 		fontColor (clr[0] * FONT_ITOF, clr[1] * FONT_ITOF, clr[2] * FONT_ITOF);
 	} else if (*s == 'a')
 	{
 		s += 1;
-		if (sscanf (s, "(%d %d %d %d)", &clr[0], &clr[1], &clr[2], &clr[3]) != 4)
+		if (sscanf_s (s, "(%d %d %d %d)", &clr[0], &clr[1], &clr[2], &clr[3]) != 4)
 			return -1;
 		fontColorA (clr[0] * FONT_ITOF, clr[1] * FONT_ITOF, clr[2] * FONT_ITOF, clr[3] * FONT_ITOF);
 	}

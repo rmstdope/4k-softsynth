@@ -267,18 +267,18 @@ TrackEdit::Draw(void)
         if(track < 0 || track >= mNumInstruments)
             continue;
         int xStart = Display::SCREEN_WIDTH / 2 + (j - 2) * 80 + 40;
-        float color = 1.0f - 0.3 * abs(j - 2);
+        float color = 1.0f - 0.3f * abs(j - 2);
         fontSize(10);
         if(IsMuted(track)) {
             fontColor(0.3f, 0.1f, 0.1f);
         } else {
             fontColor(color, color, color);
         }
-        sprintf(str, "Track %d", track);
+        sprintf_s(str, 200, "Track %d", track);
         fontDrawString(xStart, 
                        Display::SCREEN_HEIGHT - Display::SCREEN_HEIGHT / 4, 
                        str);
-        for(size_t i = 0; i < mTrackLength[track]; i++) {
+        for(size_t i = 0; i < (size_t)mTrackLength[track]; i++) {
             fontSize(10);
             if(IsMuted(track)) {
                 fontColor(0.3f, 0.1f, 0.1f);
@@ -301,16 +301,16 @@ TrackEdit::Draw(void)
     // Draw track menu
     for(int i = 0; i < TRACK_SELECTIONS + mNumInstruments; i++) {
         if(i == TRACK_DELIMITER_1 + mNumInstruments) {
-            sprintf(str, "  ---  ");
+            sprintf_s(str, 200, "  ---  ");
         } else if(i == TRACK_SAVE + mNumInstruments) {
-            sprintf(str, "Save Track");
+            sprintf_s(str, 200, "Save Track");
         } else if(i == TRACK_LOAD + mNumInstruments) {
-            sprintf(str, "Load Track");
+            sprintf_s(str, 200, "Load Track");
         } else {
             if(IsMuted(i - TRACK_DELIMITER_1))
-                sprintf(str, "Instrument %d: Muted", i - TRACK_DELIMITER_1);
+                sprintf_s(str, 200, "Instrument %d: Muted", i - TRACK_DELIMITER_1);
             else
-                sprintf(str, "Instrument %d: On", i - TRACK_DELIMITER_1);
+                sprintf_s(str, 200, "Instrument %d: On", i - TRACK_DELIMITER_1);
         }
         
         // Draw Text

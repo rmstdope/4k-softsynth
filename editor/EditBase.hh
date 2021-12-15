@@ -2,9 +2,16 @@
 #ifndef EDIT_BASE_H
 #define EDIT_BASE_H
 
+#ifdef WIN32
+#include <windows.h>
+#endif
 #include <string>
 #include <fstream>
+#ifdef WIN32
+#include <SDL.h>
+#else
 #include <SDL/SDL.h>
+#endif
 
 #include "softsynth.h"
 

@@ -2,7 +2,14 @@
 #ifndef INSTRUMENT_EDIT
 #define INSTRUMENT_EDIT
 
+#ifdef WIN32
+#include <windows.h>
+#endif
+#ifdef WIN32
+#include <SDL.h>
+#else
 #include <SDL/SDL.h>
+#endif
 #include "Display.hh"
 #include "EditBase.hh"
 

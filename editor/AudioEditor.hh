@@ -2,12 +2,19 @@
 #ifndef AUDIO_EDITOR_H
 #define AUDIO_EDITOR_H
 
+#ifdef WIN32
+#include <windows.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
 #include <fstream>
 #include <vector>
+#ifdef WIN32
+#include <SDL.h>
+#else
 #include <SDL/SDL.h>
+#endif
 #include <GL/gl.h>
 #include <glTexFont.h>
 #include "softsynth.h"

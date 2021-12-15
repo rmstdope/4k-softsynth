@@ -177,8 +177,7 @@ int fontLoadTGA (char *name, int id)
 	int imageWidth, imageHeight;
 	int imageBits, size;
 	FILE *s;
-	
-	if (!(s = fopen (name, "r+bt")))
+	if (fopen_s (&s, name, "rb") != 0)
 		return FONT_FILE_NOT_FOUND;
 
 	fread (&type, sizeof (char), 3, s); // read in colormap info and image type, byte 0 ignored

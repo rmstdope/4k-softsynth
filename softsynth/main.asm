@@ -1,9 +1,9 @@
 ; The main program
 ;	bits    32
 
-%include "common.inc"
 %include "debug.inc"
-	
+%include "common.inc"
+
 	cextern	SDL_Init
 	cextern	SDL_Quit
 	cextern	SDL_OpenAudio
@@ -13,13 +13,14 @@
 	cextern	SDL_SetVideoMode
 	cextern	softsynth_play
 	cextern	softsynth_init
+ 	cextern ExitProcess@4
 	cglobal	_start
 	cglobal	start
 	cglobal	main
-; 	cglobal	mainCRTStartup
+ 	cglobal	mainCRTStartup
 
 	section .text
-; mainCRTStartup:
+ mainCRTStartup:
 _start:
 start:
 main:
@@ -74,7 +75,10 @@ quit:
  	popad
 	
 	;; End process
-%ifdef RET
+%ifdef WINDOWS
+	push    dword 0
+	call    ExitProcess@4
+%elifdef RET
 	ret
 %else
 	xor     eax,eax

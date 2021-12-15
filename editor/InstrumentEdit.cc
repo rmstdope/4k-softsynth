@@ -1,10 +1,10 @@
 // -*- mode:C++; tab-width:4; c-basic-offset:4; indent-tabs-mode:nil -*-
+#include "InstrumentEdit.hh"
+#include "softsynth.h"
+
 #include <glTexFont.h>
 #include <string>
 #include <GL/gl.h>
-
-#include "InstrumentEdit.hh"
-#include "softsynth.h"
 
 InstrumentEdit::InstrumentEdit(int numInstruments) :
     mNumInstruments(10),
@@ -146,7 +146,7 @@ InstrumentEdit::Draw(void)
     for(int x = 0; x < Display::SCREEN_WIDTH; x++) {
         float y = Display::SCREEN_HEIGHT / 2;
         y += (mDisplayData[x] / 32767.0f) * (height / 2);
-        glVertex3f(x, Display::SCREEN_HEIGHT - y, 0.0f);
+        glVertex3f(GLfloat(x), Display::SCREEN_HEIGHT - y, 0.0f);
     }
     glEnd();
 
@@ -198,50 +198,50 @@ InstrumentEdit::Draw(void)
     for(int i = 0; i < INSTRUMENT_SELECTIONS; i++) {
         switch(i) {
         case INSTRUMENT_NUM:
-            sprintf(str, "Instrument: %d", mInstrumentNum);
+            sprintf_s(str, 200, "Instrument: %d", mInstrumentNum);
             break;
         case INSTRUMENT_WAVEFORM:
             switch(GetWaveform(instrument_definition[mInstrumentNum].waveForm)) {
             case SINE:
-                sprintf(str, "Waveform: Sine");
+                sprintf_s(str, 200, "Waveform: Sine");
                 break;
             case NOISE:
-                sprintf(str, "Waveform: Noise");
+                sprintf_s(str, 200, "Waveform: Noise");
                 break;
             case SQUARE:
-                sprintf(str, "Waveform: Square");
+                sprintf_s(str, 200, "Waveform: Square");
                 break;
             case SAWTOOTH:
-                sprintf(str, "Waveform: Sawtooth");
+                sprintf_s(str, 200, "Waveform: Sawtooth");
                 break;
             }
             break;
         case INSTRUMENT_ATTACK:
-            sprintf(str, "Attack: %d", instrument_definition[mInstrumentNum].attack);
+            sprintf_s(str, 200, "Attack: %d", instrument_definition[mInstrumentNum].attack);
             break;
         case INSTRUMENT_DECAY:
-            sprintf(str, "Decay: %d", instrument_definition[mInstrumentNum].decay);
+            sprintf_s(str, 200, "Decay: %d", instrument_definition[mInstrumentNum].decay);
             break;
         case INSTRUMENT_SUSTAIN:
-            sprintf(str, "Sustain: %.2f", instrument_definition[mInstrumentNum].sustain);
+            sprintf_s(str, 200, "Sustain: %.2f", instrument_definition[mInstrumentNum].sustain);
             break;
         case INSTRUMENT_RELEASE:
-            sprintf(str, "Release: %d", instrument_definition[mInstrumentNum].release);
+            sprintf_s(str, 200, "Release: %d", instrument_definition[mInstrumentNum].release);
             break;
         case INSTRUMENT_SWEEP:
-            sprintf(str, "Sweep: %.8f", instrument_definition[mInstrumentNum].sweep);
+            sprintf_s(str, 200, "Sweep: %.8f", instrument_definition[mInstrumentNum].sweep);
             break;
         case INSTRUMENT_MODULATION:
-            sprintf(str, "Modulation: %.6f", instrument_definition[mInstrumentNum].modulation);
+            sprintf_s(str, 200, "Modulation: %.6f", instrument_definition[mInstrumentNum].modulation);
             break;
         case INSTRUMENT_DELIMITER_1:
-            sprintf(str, "  ---  ");
+            sprintf_s(str, 200, "  ---  ");
             break;
         case INSTRUMENT_SAVE:
-            sprintf(str, "Save Instrument");
+            sprintf_s(str, 200, "Save Instrument");
             break;
         case INSTRUMENT_LOAD:
-            sprintf(str, "Load Instrument");
+            sprintf_s(str, 200, "Load Instrument");
             break;
         }
         
@@ -323,9 +323,9 @@ InstrumentEdit::Change(int sign,
         break;
     case INSTRUMENT_SUSTAIN:
         if(moveFast)
-            instrument_definition[mInstrumentNum].sustain += sign * 0.1;
+            instrument_definition[mInstrumentNum].sustain += sign * 0.1f;
         else
-            instrument_definition[mInstrumentNum].sustain += sign * 0.01;
+            instrument_definition[mInstrumentNum].sustain += sign * 0.01f;
         if(instrument_definition[mInstrumentNum].sustain < 0.0f)
             instrument_definition[mInstrumentNum].sustain = 0.0f;
         if(instrument_definition[mInstrumentNum].sustain > 1.0f)
@@ -341,15 +341,15 @@ InstrumentEdit::Change(int sign,
         break;
     case INSTRUMENT_SWEEP:
         if(moveFast)
-            instrument_definition[mInstrumentNum].sweep += sign * 0.0000001;
+            instrument_definition[mInstrumentNum].sweep += sign * 0.0000001f;
         else
-            instrument_definition[mInstrumentNum].sweep += sign * 0.00000001;
+            instrument_definition[mInstrumentNum].sweep += sign * 0.00000001f;
         break;
     case INSTRUMENT_MODULATION:
         if(moveFast)
-            instrument_definition[mInstrumentNum].modulation += sign * 0.0001;
+            instrument_definition[mInstrumentNum].modulation += sign * 0.0001f;
         else
-            instrument_definition[mInstrumentNum].modulation += sign * 0.00001;
+            instrument_definition[mInstrumentNum].modulation += sign * 0.00001f;
         break;
 //     case INSTRUMENT_ACTION:
 //         mAction += sign;

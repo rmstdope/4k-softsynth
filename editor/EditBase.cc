@@ -1,12 +1,12 @@
 // -*- mode:C++; tab-width:4; c-basic-offset:4; indent-tabs-mode:nil -*-
-#include <GL/gl.h>
-
-#include <fstream>
 
 #include "glTexFont.h"
 #include "EditBase.hh"
 #include "Display.hh"
 #include "softsynth.h"
+
+#include <GL/gl.h>
+#include <fstream>
 
 const SDLKey EditBase::mNoteKeys[NUM_KEYS] = {
     SDLK_q, SDLK_w, SDLK_e, SDLK_r, SDLK_t, SDLK_y, SDLK_u, SDLK_i, SDLK_o, SDLK_p, 
@@ -438,7 +438,7 @@ EditBase::DrawHelp(std::string* strings,
             Display::SCREEN_HEIGHT - Display::SCREEN_HEIGHT / 8);
     fontShadow();
     fontShadowColor(0.5, 0.5, 0.5);
-    fontColor(0.8, 0.1, 0.1);
+    fontColor(0.8f, 0.1f, 0.1f);
     fontSize(10);
     std::string str("Help");
     fontDrawString(Display::SCREEN_WIDTH / 2 - str.size() * 5, 
@@ -446,7 +446,7 @@ EditBase::DrawHelp(std::string* strings,
                    str.c_str());
 
     size_t numGen = sizeof(helpStrings) / sizeof(std::string);
-    for(int i = 0; i < numGen; i++) {
+    for(size_t i = 0; i < numGen; i++) {
         fontSize(10);
         fontDrawString(Display::SCREEN_WIDTH / 8 + 10, 
                        Display::SCREEN_HEIGHT - Display::SCREEN_HEIGHT / 8 - 40 - 10 * i, 
@@ -508,12 +508,12 @@ EditBase::DrawDialogue(void)
             str = "Load " + GetExtension();
         fontShadow();
         fontShadowColor(0.5, 0.5, 0.5);
-        fontColor(0.8, 0.1, 0.1);
+        fontColor(0.8f, 0.1f, 0.1f);
         fontSize(10);
         fontDrawString(Display::SCREEN_WIDTH / 2 - str.size() * 5, 
                        Display::SCREEN_HEIGHT - Display::SCREEN_HEIGHT / 4 - 20, 
                        str.c_str());
-        fontColor(0.8, 0.1, 0.1);
+        fontColor(0.8f, 0.1f, 0.1f);
         fontSize(10);
         str = mFilename;
         while(str.size() < FILENAME_LENGTH)
