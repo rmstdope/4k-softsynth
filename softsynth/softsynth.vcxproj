@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\packages\vsyasm.1.3.0.3\build\vsyasm.props" Condition="Exists('..\packages\vsyasm.1.3.0.3\build\vsyasm.props')" />
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -178,6 +179,7 @@
     <Import Project="..\packages\nupengl.core.0.1.0.1\build\native\nupengl.core.targets" Condition="Exists('..\packages\nupengl.core.0.1.0.1\build\native\nupengl.core.targets')" />
     <Import Project="..\packages\SDL.redist.1.2.15.16\build\native\SDL.redist.targets" Condition="Exists('..\packages\SDL.redist.1.2.15.16\build\native\SDL.redist.targets')" />
     <Import Project="..\packages\SDL.1.2.15.16\build\native\SDL.targets" Condition="Exists('..\packages\SDL.1.2.15.16\build\native\SDL.targets')" />
+    <Import Project="..\packages\vsyasm.1.3.0.3\build\vsyasm.targets" Condition="Exists('..\packages\vsyasm.1.3.0.3\build\vsyasm.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
@@ -187,5 +189,7 @@
     <Error Condition="!Exists('..\packages\nupengl.core.0.1.0.1\build\native\nupengl.core.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\nupengl.core.0.1.0.1\build\native\nupengl.core.targets'))" />
     <Error Condition="!Exists('..\packages\SDL.redist.1.2.15.16\build\native\SDL.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\SDL.redist.1.2.15.16\build\native\SDL.redist.targets'))" />
     <Error Condition="!Exists('..\packages\SDL.1.2.15.16\build\native\SDL.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\SDL.1.2.15.16\build\native\SDL.targets'))" />
+    <Error Condition="!Exists('..\packages\vsyasm.1.3.0.3\build\vsyasm.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\vsyasm.1.3.0.3\build\vsyasm.props'))" />
+    <Error Condition="!Exists('..\packages\vsyasm.1.3.0.3\build\vsyasm.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\vsyasm.1.3.0.3\build\vsyasm.targets'))" />
   </Target>
 </Project>

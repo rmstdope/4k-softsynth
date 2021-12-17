@@ -65,4 +65,7 @@
       <Filter>Source Files</Filter>
     </NASM>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
 </Project>
