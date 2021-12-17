@@ -17,8 +17,8 @@
  	cextern ExitProcess@4
 	
 ;;; Define external softsynth asm functions
-	extern	softsynth_play
-	extern	softsynth_init
+	cextern	softsynth_play
+	cextern	softsynth_init
 
 ;;; Define necessary start point for different platforms
 	cglobal	_start		; Linux32
