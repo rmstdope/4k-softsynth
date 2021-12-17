@@ -4,23 +4,30 @@
 %include "common.inc"
 %include "debug.inc"
 
-	cextern	SDL_Init
+;;; Define external c function calls
+;;; SDL
+	cextern SDL_Init
 	cextern	SDL_Quit
 	cextern	SDL_OpenAudio
 	cextern	SDL_PollEvent
 	cextern	SDL_Delay
 	cextern	SDL_PauseAudio
 	cextern	SDL_SetVideoMode
-	cextern	softsynth_play
-	cextern	softsynth_init
+;;; Windows exit process
  	cextern ExitProcess@4
-	cglobal	_start
+	
+;;; Define external softsynth asm functions
+	extern	softsynth_play
+	extern	softsynth_init
+
+;;; Define necessary start point for different platforms
+	cglobal	_start		; Linux32
 	cglobal	start
 	cglobal	main
- 	cglobal	mainCRTStartup
+ 	cglobal	mainCRTStartup	; Win10 Visual Studio 2019
 
-	section .text
- mainCRTStartup:
+	section .code	align=1
+mainCRTStartup:
 _start:
 start:
 main:
@@ -87,7 +94,7 @@ quit:
   	int     080h		; Exit process
 %endif
 	
-	section .data
+	section .data align=1
 
 audio_spec:
 	dd	44100		; Frequency
@@ -100,8 +107,7 @@ audio_spec:
 	dd	0		; Size of buffer
 	dd	softsynth_play	; Function for playing song 
 	dd	0		; Userdata 
-
 	
-	section .bss
+	section .bss align=1
 
 struct: resd    10000
