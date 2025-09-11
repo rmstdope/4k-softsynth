@@ -1,6 +1,6 @@
 /*
     Copyright (c) 1999 Nate Miller
-    
+
     Notice: Usage of any code in this file is subject to the rules
     described in the LICENSE.TXT file included in this directory.
     Reading, compiling, or otherwise using this code constitutes
@@ -13,6 +13,7 @@
     Web         -- http://members.home.com/vandals1
 */
 /* just generic headers to include, nothing fancy */
+#define GL_SILENCE_DEPRECATION 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,4 +24,9 @@
 #include <winuser.h>
 #include <tchar.h>
 #endif
+#ifdef __APPLE__
+#include <OpenGL/OpenGL.h>
+#include <OpenGL/glu.h>
+#else
 #include <GL/gl.h>
+#endif

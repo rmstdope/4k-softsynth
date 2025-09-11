@@ -24,3 +24,5 @@ Debug
 *.user
 SDL.dll
 packages
+bin/
+obj/

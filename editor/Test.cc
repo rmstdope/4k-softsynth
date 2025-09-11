@@ -1,8 +1,10 @@
 // -*- mode:C++; tab-width:4; c-basic-offset:4; indent-tabs-mode:nil -*-
+#ifdef __APPLE__
+#include <SDL2/SDL.h>
+#else
 #include <SDL/SDL.h>
+#endif
 #include <cmath>
-
-SDL_Surface* videoSurface = 0;
 
 #define NUM_TONES 6
 
@@ -103,7 +105,7 @@ main(void)
     on[0] = true;
     lfoOn = true;
 
-    if(ret = SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
+    if((ret = SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_AUDIO)) != 0) {
         printf("Could not initialize SDL\n");
     } else {
         // Init audio    
@@ -115,11 +117,16 @@ main(void)
         desired.samples = 4096; // 1024 samples per callback
         desired.callback = AudioCallback;
         desired.userdata = 0;
-        if(ret = SDL_OpenAudio(&desired, &obtained)) {
+        if((ret = SDL_OpenAudio(&desired, &obtained)) != 0) {
             printf("Could not initialize Audio\n");
         } else {
-            videoSurface = SDL_SetVideoMode(800, 600, 32, 
-                                            SDL_ANYFORMAT | SDL_HWACCEL | SDL_HWSURFACE);
+#ifdef __APPLE__
+            SDL_Window *videoSurface = SDL_CreateWindow(NULL, 0, 0, 1024, 768, SDL_WINDOW_OPENGL);
+            SDL_GL_CreateContext(videoSurface);
+#else
+            SDL_Surface *videoSurface = SDL_SetVideoMode(800, 600, 32,
+                                                         SDL_ANYFORMAT | SDL_HWACCEL | SDL_HWSURFACE);
+#endif
             if(videoSurface == 0) {
                 printf("Could not initialize Video\n");
                 ret = -1;

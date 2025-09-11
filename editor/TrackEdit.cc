@@ -139,9 +139,7 @@ TrackEdit::IncSelection(void)
     }
 }
 
-void
-TrackEdit::KeyPressed(SDLKey key,
-                      SDLMod mod)
+void TrackEdit::KeyPressed(SDL_Keycode key, Uint16 mod)
 {
     switch(key) {
     case SDLK_RETURN:

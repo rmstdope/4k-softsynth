@@ -1,0 +1,18 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Debug editor",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/editor/bin/editor",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/editor",
+			"environment": [],
+			"externalConsole": false,
+			"MIMode": "lldb",
+			"preLaunchTask": "make"
+		}
+	]
+}

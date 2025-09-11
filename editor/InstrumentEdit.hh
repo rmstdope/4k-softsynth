@@ -7,6 +7,8 @@
 #endif
 #ifdef WIN32
 #include <SDL.h>
+#elif __APPLE__
+#include <SDL2/SDL.h>
 #else
 #include <SDL/SDL.h>
 #endif
@@ -34,9 +36,9 @@ public:
     /// If ok, increase selection value
     void IncSelection(void);
     /// Act on key pressed
-    void KeyPressed(SDLKey key, SDLMod mod);
+    void KeyPressed(SDL_Keycode key, Uint16 mod);
     /// Act on key unpressed
-    void KeyUnpressed(SDLKey key, SDLMod mod);
+    void KeyUnpressed(SDL_Keycode key, Uint16 mod);
     /// Stop edit mode
     void StopMode(void);
     /// Start edit mode
@@ -82,7 +84,7 @@ private:
 
     int mAction;
 
-    SDLKey mLastKey;
+    SDL_Keycode mLastKey;
 
     Window mActiveWindow;
 

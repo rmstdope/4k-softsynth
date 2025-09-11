@@ -1,46 +1,53 @@
 // -*- mode:C++; tab-width:4; c-basic-offset:4; indent-tabs-mode:nil -*-
+#define GL_SILENCE_DEPRECATION 1
 
 #include "glTexFont.h"
 #include "EditBase.hh"
 #include "Display.hh"
 #include "softsynth.h"
 
+#ifdef __APPLE__
+#include <OpenGL/OpenGL.h>
+#include <OpenGL/glu.h>
+#else
 #include <GL/gl.h>
+#endif
 #include <fstream>
 
-const SDLKey EditBase::mNoteKeys[NUM_KEYS] = {
-    SDLK_q, SDLK_w, SDLK_e, SDLK_r, SDLK_t, SDLK_y, SDLK_u, SDLK_i, SDLK_o, SDLK_p, 
-    SDLK_a, SDLK_s, SDLK_d, SDLK_f, SDLK_g, SDLK_h, SDLK_j, SDLK_k, SDLK_l, 
-    SDLK_z, SDLK_x, SDLK_c, SDLK_v, SDLK_b, SDLK_n, SDLK_m, SDLK_COMMA, SDLK_PERIOD
-};
+const SDL_Keycode EditBase::mNoteKeys[NUM_KEYS] = {
+    SDLK_q, SDLK_w, SDLK_e, SDLK_r, SDLK_t, SDLK_y, SDLK_u, SDLK_i, SDLK_o, SDLK_p,
+    SDLK_a, SDLK_s, SDLK_d, SDLK_f, SDLK_g, SDLK_h, SDLK_j, SDLK_k, SDLK_l,
+    SDLK_z, SDLK_x, SDLK_c, SDLK_v, SDLK_b, SDLK_n, SDLK_m, SDLK_COMMA, SDLK_PERIOD};
 
-EditBase::EditBase() :
-    mHelp(false),
-    mRedraw(true),
-    mPlaying(false),
-    mQuit(false),
-    mDialogue(NO_DIALOGUE),
-    mFilename("")
+EditBase::EditBase() : mHelp(false),
+                       mRedraw(true),
+                       mPlaying(false),
+                       mQuit(false),
+                       mDialogue(NO_DIALOGUE),
+                       mFilename("")
 {
 }
 
-void
-EditBase::ProcessEvents(SDL_Event* events,
-                        int numEvents)
+void EditBase::ProcessEvents(SDL_Event *events,
+                             int numEvents)
 {
 #define KEY_TICKS 80
-    static SDLKey lastKey = SDLK_SPACE;
+    static SDL_Keycode lastKey = SDLK_SPACE;
     static Uint32 keyStart = 0;
     static bool fastKey = false;
     static bool newKey = false;
 
-    switch(mDialogue) {
+    switch (mDialogue)
+    {
     case NO_DIALOGUE:
-        for(int i = 0; i < numEvents; i++) {
-            switch(events[i].type) {
+        for (int i = 0; i < numEvents; i++)
+        {
+            switch (events[i].type)
+            {
             case SDL_KEYDOWN:
-                fastKey = events[i].key.keysym.mod & (KMOD_LSHIFT|KMOD_RSHIFT);
-                switch(events[i].key.keysym.sym) {
+                fastKey = events[i].key.keysym.mod & (KMOD_LSHIFT | KMOD_RSHIFT);
+                switch (events[i].key.keysym.sym)
+                {
                 case SDLK_UP:
                     DecSelection();
                     Redraw();
@@ -83,46 +90,59 @@ EditBase::ProcessEvents(SDL_Event* events,
             }
         }
         // Do hold for arrow keys
-        switch(lastKey) {
+        switch (lastKey)
+        {
         case SDLK_RIGHT:
+        {
+            Uint32 numTicks = SDL_GetTicks() - keyStart;
+            while (numTicks > KEY_TICKS)
             {
-                Uint32 numTicks = SDL_GetTicks() - keyStart;
-                while(numTicks > KEY_TICKS) {
-                    numTicks -= KEY_TICKS;
-                    keyStart += KEY_TICKS;
-                    if(!newKey) {
-                        Change(1, fastKey);
-                    } else {
-                        newKey = false;
-                    }
-                    Redraw();
+                numTicks -= KEY_TICKS;
+                keyStart += KEY_TICKS;
+                if (!newKey)
+                {
+                    Change(1, fastKey);
                 }
+                else
+                {
+                    newKey = false;
+                }
+                Redraw();
             }
-            break;
+        }
+        break;
         case SDLK_LEFT:
+        {
+            Uint32 numTicks = SDL_GetTicks() - keyStart;
+            while (numTicks > KEY_TICKS)
             {
-                Uint32 numTicks = SDL_GetTicks() - keyStart;
-                while(numTicks > KEY_TICKS) {
-                    numTicks -= KEY_TICKS;
-                    keyStart += KEY_TICKS;
-                    if(!newKey) {
-                        Change(-1, fastKey);
-                    } else {
-                        newKey = false;
-                    }
-                    Redraw();
+                numTicks -= KEY_TICKS;
+                keyStart += KEY_TICKS;
+                if (!newKey)
+                {
+                    Change(-1, fastKey);
                 }
+                else
+                {
+                    newKey = false;
+                }
+                Redraw();
             }
-            break;
+        }
+        break;
         }
         break;
     case LOAD_DIALOGUE:
     case SAVE_DIALOGUE:
-        for(int i = 0; i < numEvents; i++) {
-            if(events[i].type == SDL_KEYDOWN) {
-                switch(events[i].key.keysym.sym) {
+        for (int i = 0; i < numEvents; i++)
+        {
+            if (events[i].type == SDL_KEYDOWN)
+            {
+                switch (events[i].key.keysym.sym)
+                {
                 case SDLK_BACKSPACE:
-                    if(mFilename.size()) {
+                    if (mFilename.size())
+                    {
                         mFilename.erase(mFilename.size() - 1);
                     }
                     break;
@@ -130,21 +150,27 @@ EditBase::ProcessEvents(SDL_Event* events,
                     mDialogue = NO_DIALOGUE;
                     break;
                 case SDLK_RETURN:
-                    if(mFilename.size()) {
-                        if(mDialogue == SAVE_DIALOGUE) {
+                    if (mFilename.size())
+                    {
+                        if (mDialogue == SAVE_DIALOGUE)
+                        {
                             PerformSave();
-                        } else {
+                        }
+                        else
+                        {
                             PerformLoad();
                         }
                     }
                     break;
                 default:
-                    if((events[i].key.keysym.sym >= SDLK_a && 
-                        events[i].key.keysym.sym <= SDLK_z) || 
-                       (events[i].key.keysym.sym >= SDLK_0 && 
-                        events[i].key.keysym.sym <= SDLK_9)) {
-                        if(mFilename.size() < FILENAME_LENGTH) {
-                            char key = 
+                    if ((events[i].key.keysym.sym >= SDLK_a &&
+                         events[i].key.keysym.sym <= SDLK_z) ||
+                        (events[i].key.keysym.sym >= SDLK_0 &&
+                         events[i].key.keysym.sym <= SDLK_9))
+                    {
+                        if (mFilename.size() < FILENAME_LENGTH)
+                        {
+                            char key =
                                 SDL_GetKeyName(events[i].key.keysym.sym)[0];
                             mFilename += key;
                         }
@@ -155,56 +181,57 @@ EditBase::ProcessEvents(SDL_Event* events,
         break;
     }
 
-    if(mRedraw) {
+    if (mRedraw)
+    {
         mRedraw = false;
 
         // Clear screen
         Clear();
-      
+
         // Draw
         Draw();
         DrawDialogue();
-      
+
         // Update screen
         Present();
     }
 }
 
-void
-EditBase::Present(void)
+void EditBase::Present(void)
 {
     glLoadIdentity();
+#ifdef __APPLE__
+    SDL_GL_SwapWindow(mVideoSurface);
+#else
     SDL_GL_SwapBuffers();
+#endif
 }
 
-void
-EditBase::Clear(void)
+void EditBase::Clear(void)
 {
-    glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-void
-EditBase::Redraw(void)
+void EditBase::Redraw(void)
 {
     mRedraw = true;
 }
 
-bool
-EditBase::ShouldQuit(void) const
+bool EditBase::ShouldQuit(void) const
 {
     return mQuit;
 }
 
-bool
-EditBase::IsPlaying(void) const
+bool EditBase::IsPlaying(void) const
 {
     return mPlaying;
 }
 
-const char* const
+const char *const
 EditBase::GetNote(Sint8 note)
 {
-    switch(note) {
+    switch (note)
+    {
     case HOLD_1:
         return "HOLD+1";
     case HOLD_2:
@@ -376,10 +403,11 @@ std::string
 EditBase::GetPattern(Sint8 pattern)
 {
     std::string str;
-    
-    if(pattern == LOOP_TRACK)
+
+    if (pattern == LOOP_TRACK)
         str = "Loop";
-    else {
+    else
+    {
         str = '0' + pattern / 100;
         str += '0' + (pattern % 100) / 10;
         str += '0' + pattern % 10;
@@ -391,13 +419,13 @@ EditBase::GetPattern(Sint8 pattern)
 WaveForms
 EditBase::GetWaveform(WaveformFunc ptr)
 {
-    if(get_sine_waveform == ptr)
+    if (get_sine_waveform == ptr)
         return SINE;
-    if(get_noise_waveform == ptr)
+    if (get_noise_waveform == ptr)
         return NOISE;
-    if(get_square_waveform == ptr)
+    if (get_square_waveform == ptr)
         return SQUARE;
-    if(get_sawtooth_waveform == ptr)
+    if (get_sawtooth_waveform == ptr)
         return SAWTOOTH;
     return NUM_WAVEFORMS;
 }
@@ -405,20 +433,19 @@ EditBase::GetWaveform(WaveformFunc ptr)
 WaveformFunc
 EditBase::GetWaveformFunc(WaveForms wave)
 {
-    if(wave == SINE)
+    if (wave == SINE)
         return get_sine_waveform;
-    if(wave == NOISE)
+    if (wave == NOISE)
         return get_noise_waveform;
-    if(wave == SQUARE)
+    if (wave == SQUARE)
         return get_square_waveform;
-    if(wave == SAWTOOTH)
+    if (wave == SAWTOOTH)
         return get_sawtooth_waveform;
     return 0;
 }
 
-void
-EditBase::DrawHelp(std::string* strings, 
-                   int num)
+void EditBase::DrawHelp(std::string *strings,
+                        int num)
 {
     std::string helpStrings[] = {
         "F1         - Edit Instrument",
@@ -433,76 +460,73 @@ EditBase::DrawHelp(std::string* strings,
     };
 
     glColor3f(0.7f, 0.7f, 0.7f);
-    glRectf(Display::SCREEN_WIDTH / 8, Display::SCREEN_HEIGHT / 8, 
-            Display::SCREEN_WIDTH - Display::SCREEN_WIDTH / 8, 
+    glRectf(Display::SCREEN_WIDTH / 8, Display::SCREEN_HEIGHT / 8,
+            Display::SCREEN_WIDTH - Display::SCREEN_WIDTH / 8,
             Display::SCREEN_HEIGHT - Display::SCREEN_HEIGHT / 8);
     fontShadow();
     fontShadowColor(0.5, 0.5, 0.5);
     fontColor(0.8f, 0.1f, 0.1f);
     fontSize(10);
     std::string str("Help");
-    fontDrawString(Display::SCREEN_WIDTH / 2 - str.size() * 5, 
-                   Display::SCREEN_HEIGHT - Display::SCREEN_HEIGHT / 8 - 20, 
+    fontDrawString(Display::SCREEN_WIDTH / 2 - str.size() * 5,
+                   Display::SCREEN_HEIGHT - Display::SCREEN_HEIGHT / 8 - 20,
                    str.c_str());
 
     size_t numGen = sizeof(helpStrings) / sizeof(std::string);
-    for(size_t i = 0; i < numGen; i++) {
+    for (size_t i = 0; i < numGen; i++)
+    {
         fontSize(10);
-        fontDrawString(Display::SCREEN_WIDTH / 8 + 10, 
-                       Display::SCREEN_HEIGHT - Display::SCREEN_HEIGHT / 8 - 40 - 10 * i, 
+        fontDrawString(Display::SCREEN_WIDTH / 8 + 10,
+                       Display::SCREEN_HEIGHT - Display::SCREEN_HEIGHT / 8 - 40 - 10 * i,
                        helpStrings[i].c_str());
     }
-    for(int i = 0; i < num; i++) {
+    for (int i = 0; i < num; i++)
+    {
         fontSize(10);
-        fontDrawString(Display::SCREEN_WIDTH / 8 + 10, 
-                       Display::SCREEN_HEIGHT - Display::SCREEN_HEIGHT / 8 - 40 - 10 * (i + numGen), 
+        fontDrawString(Display::SCREEN_WIDTH / 8 + 10,
+                       Display::SCREEN_HEIGHT - Display::SCREEN_HEIGHT / 8 - 40 - 10 * (i + numGen),
                        strings[i].c_str());
     }
 }
 
-void
-EditBase::ToggleHelp(void)
-{ 
-    if(mHelp) 
-        mHelp = false; 
-    else 
-        mHelp = true; 
+void EditBase::ToggleHelp(void)
+{
+    if (mHelp)
+        mHelp = false;
+    else
+        mHelp = true;
 }
 
-void
-EditBase::KeyUnpressed(SDLKey key, 
-                       SDLMod mod)
+void EditBase::KeyUnpressed(SDL_Keycode key, Uint16 mod)
 {
 }
 
-void
-EditBase::Save(void)
+void EditBase::Save(void)
 {
     printf("xxx\n");
     mDialogue = SAVE_DIALOGUE;
 }
 
-void
-EditBase::Load(void)
+void EditBase::Load(void)
 {
     mDialogue = LOAD_DIALOGUE;
 }
 
-void
-EditBase::DrawDialogue(void)
+void EditBase::DrawDialogue(void)
 {
     std::string str;
 
-    switch(mDialogue) {
+    switch (mDialogue)
+    {
     case NO_DIALOGUE:
         break;
     case LOAD_DIALOGUE:
     case SAVE_DIALOGUE:
         glColor3f(0.7f, 0.7f, 0.7f);
-        glRectf(Display::SCREEN_WIDTH / 4, Display::SCREEN_HEIGHT / 4, 
-                Display::SCREEN_WIDTH - Display::SCREEN_WIDTH / 4, 
+        glRectf(Display::SCREEN_WIDTH / 4, Display::SCREEN_HEIGHT / 4,
+                Display::SCREEN_WIDTH - Display::SCREEN_WIDTH / 4,
                 Display::SCREEN_HEIGHT - Display::SCREEN_HEIGHT / 4);
-        if(mDialogue == SAVE_DIALOGUE)
+        if (mDialogue == SAVE_DIALOGUE)
             str = "Save " + GetExtension();
         else
             str = "Load " + GetExtension();
@@ -510,25 +534,24 @@ EditBase::DrawDialogue(void)
         fontShadowColor(0.5, 0.5, 0.5);
         fontColor(0.8f, 0.1f, 0.1f);
         fontSize(10);
-        fontDrawString(Display::SCREEN_WIDTH / 2 - str.size() * 5, 
-                       Display::SCREEN_HEIGHT - Display::SCREEN_HEIGHT / 4 - 20, 
+        fontDrawString(Display::SCREEN_WIDTH / 2 - str.size() * 5,
+                       Display::SCREEN_HEIGHT - Display::SCREEN_HEIGHT / 4 - 20,
                        str.c_str());
         fontColor(0.8f, 0.1f, 0.1f);
         fontSize(10);
         str = mFilename;
-        while(str.size() < FILENAME_LENGTH)
+        while (str.size() < FILENAME_LENGTH)
             str += '_';
-        
-        fontDrawString(Display::SCREEN_WIDTH / 2 - FILENAME_LENGTH * 5, 
-                       Display::SCREEN_HEIGHT / 2, 
+
+        fontDrawString(Display::SCREEN_WIDTH / 2 - FILENAME_LENGTH * 5,
+                       Display::SCREEN_HEIGHT / 2,
                        str.c_str());
         Redraw();
         break;
     }
 }
 
-void
-EditBase::PerformSave(void)
+void EditBase::PerformSave(void)
 {
     std::ofstream fil((mFilename + "." + GetExtension()).c_str());
     WriteToFile(fil);
@@ -537,8 +560,7 @@ EditBase::PerformSave(void)
     mDialogue = NO_DIALOGUE;
 }
 
-void
-EditBase::PerformLoad(void)
+void EditBase::PerformLoad(void)
 {
     std::ifstream fil((mFilename + "." + GetExtension()).c_str());
     ReadFromFile(fil);
@@ -546,4 +568,3 @@ EditBase::PerformLoad(void)
 
     mDialogue = NO_DIALOGUE;
 }
-

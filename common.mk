@@ -1,16 +1,15 @@
-ASM = nasm
-CC = g++
-
-#-O1 -ffast-math -fno-inline -fmove-all-movables -fshort-double\
-#	-fexpensive-optimizations -fpeephole2 -Wall -fforce-mem\
-#	`sdl-config --cflags` -I/usr/local/include
-
 # Choose one of the following targets
 # At present time, only linux and cygwin are verified to work
 #TARGET=win32
 #TARGET=cygwin
 #TARGET=linux64
-TARGET=linux32
+#TARGET=linux32
+TARGET=mac64
+
+#-O1 -ffast-math -fno-inline -fmove-all-movables -fshort-double\
+#	-fexpensive-optimizations -fpeephole2 -Wall -fforce-mem\
+#	`sdl-config --cflags` -I/usr/local/include
+
 
 # FULL = FULLSCREEN for fullscreen mode, something else for window
 #FULL=FULLSCREEN
@@ -48,6 +47,8 @@ CC_FLAGS_cygwin=-m32
 EXEC_SUFFIX_cygwin=.exe
 STRIP_cygwin=strip
 REMOVE_ELF_HEADER_cygwin = echo
+ASM_cygwin=nasm
+
 
 # 32-bit Linux
 ASMTARGET_linux32=-felf32 -gdwarf -s -DBIT32
@@ -59,6 +60,8 @@ PACK_linux32=../scripts/pack.sh
 CC_FLAGS_linux32=-m32
 STRIP_linux32=../../ELFkickers/sstrip/sstrip -z
 REMOVE_ELF_HEADER_linux32 = ../scripts/fix_elf_header.py
+ASM_linux32=nasm
+
 
 # 64-bit Linux
 #ASMTARGET_linux64=-felf64 -gdwarf -s -DBIT64
@@ -68,6 +71,8 @@ REMOVE_ELF_HEADER_linux32 = ../scripts/fix_elf_header.py
 #ASMOPT_linux64=-DSO
 #PACK_linux64=../scripts/pack.sh
 #CC_FLAGS_linux64=
+
+# 64-bit Mac (Mx)
 
 # Set generic flags
 ASMTARGET=$(ASMTARGET_$(TARGET))
@@ -80,5 +85,26 @@ STRIP=$(STRIP_$(TARGET))
 REMOVE_ELF_HEADER=$(REMOVE_ELF_HEADER_$(TARGET))
 ASM_FLAGS=$(ASM_DEBUG_FLAGS_$(DEB))
 CC_FLAGS=$(CC_DEBUG_FLAGS_$(DEB)) $(CC_FLAGS_$(TARGET))
-
-
+ASM=$(ASM_$(TARGET))
+ifeq ($(TARGET),linux32)
+	ARCH = x86
+	CC = g++
+else ifeq ($(TARGET),mac64)
+	ARCH = arm64
+	ASMTARGET=-c -g -DDEBUG -Iinclude -arch arm64
+	OBJ_POSTFIX=o
+	LINKOPT_INTRO=-lc -m64 -nostdlib
+	LINKOPT_EDITOR=-m64 -framework OpenGL /opt/homebrew/Cellar/sdl2/2.32.10/lib/libSDL2.dylib
+	ASMOPT= -O0 -Og
+	PACK=../scripts/pack.sh
+	CC_FLAGS=$(CC_DEBUG_FLAGS_$(DEB)) -m64
+	STRIP=../../ELFkickers/sstrip/sstrip -z
+	REMOVE_ELF_HEADER = echo
+	ASM=clang++
+	CC = clang++
+else ifeq ($(TARGET),cygwin)
+	ARCH = x86
+	CC = g++
+else
+	Fail!
+endif

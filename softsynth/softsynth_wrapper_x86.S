@@ -1,6 +1,6 @@
 	bits    32
 
-%include "common.inc"
+%include "common_x86.s"
 %include "debug.inc"
 
 	;; From softsynth.asm

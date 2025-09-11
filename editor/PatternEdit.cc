@@ -26,6 +26,7 @@ PatternEdit::PatternEdit(int numInstruments, int numPatterns) :
 
     // Fix ASM patterns
     StorePatterns();
+
 }
 
 PatternEdit::~PatternEdit()
@@ -92,9 +93,7 @@ PatternEdit::IncSelection(void)
     }
 }
 
-void
-PatternEdit::KeyPressed(SDLKey key,
-                        SDLMod mod)
+void PatternEdit::KeyPressed(SDL_Keycode key, Uint16 mod)
 {
     switch(key) {
     case SDLK_RETURN:

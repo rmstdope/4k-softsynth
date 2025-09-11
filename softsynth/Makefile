@@ -2,7 +2,7 @@ include ../common.mk
 
 INC_DIRS=-IglTexFont-r6
 
-INTRO_OBJ=main.$(OBJ_POSTFIX) softsynth.$(OBJ_POSTFIX)
+INTRO_OBJ=bin/main.$(OBJ_POSTFIX) bin/softsynth.$(OBJ_POSTFIX)
 
 ifdef MANUAL_DLL_LOAD
 	INTRO_OBJ+= dynamic_library.$(OBJ_POSTFIX)
@@ -13,7 +13,7 @@ endif
 NAME = softsynth-packed
 UNPACKED = softsynth$(EXEC_SUFFIX_$(TARGET))
 
-all: $(NAME) softsynth_wrapper.$(OBJ_POSTFIX)
+all: $(NAME) bin/softsynth_wrapper.$(OBJ_POSTFIX)
 
 $(NAME): $(UNPACKED) Makefile
 	$(STRIP) $(UNPACKED)
@@ -23,41 +23,32 @@ $(NAME): $(UNPACKED) Makefile
 $(UNPACKED): $(INTRO_OBJ) Makefile
 	$(CC) $(CC_FLAGS) -o $@ $(INTRO_OBJ) $(LINKOPT_INTRO)
 
-$(AED): $(AED_OBJ) Makefile
-	$(CC) $(CC_FLAGS) -o $@ $(AED_OBJ) $(LINKOPT_AED)
+bin/main.$(OBJ_POSTFIX): main.S debug.inc common.inc Makefile
+	$(ASM) $(ASM_FLAGS) $(ASMTARGET) -D$(FULL) -D$(DEB) $(ASMOPT) -o $@ $<
 
-$(TEST): $(TEST_OBJ) Makefile
-	$(CC) $(CC_FLAGS) -o $@ $(TEST_OBJ) $(LINKOPT_AED)
+bin/dynamic_library.$(OBJ_POSTFIX): dynamic_library.S debug.inc Makefile
+	$(ASM) $(ASM_FLAGS) $(ASMTARGET)  -D$(DEB) $(ASMOPT) -o $@ $<
 
-main.$(OBJ_POSTFIX): main.asm debug.inc common.inc Makefile
-	$(ASM) $(ASM_FLAGS) $(ASMTARGET) -D$(FULL) -D$(DEB) $(ASMOPT) $<
+bin/softsynth.$(OBJ_POSTFIX): softsynth_$(ARCH).S debug.inc Makefile
+	$(ASM) $(ASM_FLAGS) $(ASMTARGET) $(ASMOPT) -o $@ $<
 
-dynamic_library.$(OBJ_POSTFIX): dynamic_library.asm debug.inc Makefile
-	$(ASM) $(ASM_FLAGS) $(ASMTARGET)  -D$(DEB) $(ASMOPT) $<
+bin/softsynth_wrapper.$(OBJ_POSTFIX): softsynth_wrapper_$(ARCH).S debug.inc Makefile
+	$(ASM) $(ASM_FLAGS) $(ASMTARGET) $(ASMOPT) -o $@ $<
 
-softsynth.$(OBJ_POSTFIX): softsynth.asm debug.inc Makefile
-	$(ASM) $(ASM_FLAGS) $(ASMTARGET) $(ASMOPT) $<
+bin/%.$(OBJ_POSTFIX): %.c Makefile
+	$(CC) $(INC_DIRS) $(CC_FLAGS) -c  -o $@ $<
 
-softsynth_wrapper.$(OBJ_POSTFIX): softsynth_wrapper.asm debug.inc Makefile
-	$(ASM) $(ASM_FLAGS) $(ASMTARGET) $(ASMOPT) $<
+bin/%.$(OBJ_POSTFIX): %.cc %.hh Makefile
+	$(CC) $(INC_DIRS) $(CC_FLAGS) -c -o $@ $<
 
-aed_main.$(OBJ_POSTFIX): aed_main.cc Makefile
-	$(CC) $(INC_DIRS) $(CC_FLAGS) $(ASMOPT) -c $<
+bin/glTexFont.$(OBJ_POSTFIX): glTexFont-r6/glTexFont.c Makefile
+	$(CC) $(INC_DIRS) $(CC_FLAGS) -c -o $@ $<
 
-%.$(OBJ_POSTFIX): %.c Makefile
-	$(CC) $(INC_DIRS) $(CC_FLAGS) -c $<
+bin/glTexFontTGA.$(OBJ_POSTFIX): glTexFont-r6/glTexFontTGA.c Makefile
+	$(CC) $(INC_DIRS) $(CC_FLAGS) -c -o $@ $<
 
-%.$(OBJ_POSTFIX): %.cc %.hh Makefile
-	$(CC) $(INC_DIRS) $(CC_FLAGS) -c $<
-
-glTexFont.$(OBJ_POSTFIX): glTexFont-r6/glTexFont.c Makefile
-	$(CC) $(INC_DIRS) $(CC_FLAGS) -c $<
-
-glTexFontTGA.$(OBJ_POSTFIX): glTexFont-r6/glTexFontTGA.c Makefile
-	$(CC) $(INC_DIRS) $(CC_FLAGS) -c $<
-
-glTexFontColor.$(OBJ_POSTFIX): glTexFont-r6/glTexFontColor.c Makefile
-	$(CC) $(INC_DIRS) $(CC_FLAGS) -c $<
+bin/glTexFontColor.$(OBJ_POSTFIX): glTexFont-r6/glTexFontColor.c Makefile
+	$(CC) $(INC_DIRS) $(CC_FLAGS) -c -o $@ $<
 
 clean:
 	rm -f *.$(OBJ_POSTFIX) $(UNPACKED) $(UNPACKED).exe $(NAME) core *~ $(AED) $(AED).exe

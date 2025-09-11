@@ -100,6 +100,18 @@ enum WaveForms {
 
 typedef void (*WaveformFunc)(void);
 
+#ifdef __APPLE__
+typedef struct
+{
+  WaveformFunc waveForm;
+  float attack;
+  float decay;
+  float sustain;
+  float release;
+  float modulation;
+  float sweep;
+} InstrumentStruct;
+#else
 typedef struct 
 {
     WaveformFunc waveForm;
@@ -110,6 +122,7 @@ typedef struct
     float modulation;
     float sweep;
 } InstrumentStruct;
+#endif
 
 // Assembler functions
 extern "C" void softsynth_init(void);
@@ -128,7 +141,7 @@ extern "C" void get_square_waveform(void);
 extern "C" void get_sawtooth_waveform(void);
 
 // Assembler variables
-extern "C" Uint32 instrument_hold[];
+extern "C" float instrument_hold[];
 extern "C" Uint32 instrument_ticks[];
 extern "C" InstrumentStruct instrument_definition[];
 extern "C" Sint8* pattern_list[];

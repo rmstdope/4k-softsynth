@@ -12,10 +12,15 @@
 #include <vector>
 #ifdef WIN32
 #include <SDL.h>
+#include <GL/gl.h>
+#elif __APPLE__
+#include <SDL2/SDL.h>
+#include <OpenGL/OpenGL.h>
+#include <OpenGL/glu.h>
 #else
 #include <SDL/SDL.h>
-#endif
 #include <GL/gl.h>
+#endif
 #include <glTexFont.h>
 #include "softsynth.h"
 #include "Display.hh"
@@ -36,21 +41,25 @@ public:
     void AudioCallback(Uint8 *stream, int len);
     /// Mainloop of editor
     void MainLoop(void);
+
 private:
-    enum Constants {
+    enum Constants
+    {
         MAX_NUM_INSTRUMENTS = 20,
         NUM_INSTRUMENTS = 10,
         NUM_PATTERNS = 20
     };
     // Edit modes
-    enum EditMode {
+    enum EditMode
+    {
         MODE_INSTRUMENT = 0,
         MODE_PATTERN,
         MODE_TRACK,
         NUM_MODES
     };
     // Actions
-    enum Actions {
+    enum Actions
+    {
         SAVE = 0,
         LOAD,
         NUM_ACTIONS
@@ -58,10 +67,14 @@ private:
     void DrawPixel(Sint32 x, Sint32 y, Uint8 r, Uint8 g, Uint8 b);
 
     /// Video surface
-    SDL_Surface* mVideoSurface;
+#ifdef __APPLE__
+    SDL_Window *mVideoSurface;
+#else
+    SDL_Surface *mVideoSurface;
+#endif
 
     EditMode mCurrentMode;
-    EditBase* mEditMode[NUM_MODES];
+    EditBase *mEditMode[NUM_MODES];
 };
 
 #endif
