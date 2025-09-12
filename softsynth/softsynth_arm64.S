@@ -426,23 +426,25 @@ get_instrument_value:
     fadd s2, s2, s1                             // s2 = offset + delta
     str s2, [x7, x5, lsl #2]                    // Store new offset
     blr x3                                      // Call waveform function
-    // Two two rows below for debugging ADSR
-    //LOAD_ADDR x3, f_sine_amp
-    //ldr s1, [x3]
+#ifdef DEBUG_ADSR
+    LOAD_ADDR x3, f_sine_amp
+    ldr s1, [x3]
+#endif
     bl get_adsr_enveloping                      // Call ADSR function  
     fmul s1, s1, s2
 
-//	mov	ebp,eax				; Move eax to ebp
-//	add	ebp,instrument_definition	; Add instrument def. to ebp
-//	fld	dword [f_instrument_offset+ecx]	; Load offset
-	;; Get basic waveform
-// 	call	dword [ebp+inst.waveform]; Get waveform value
-	;; Add ADSR volume enveloping
-//	call	get_adrs_enveloping		; Get volume value
-//	fmulp	st1,st0				; Multiply waveform with volume
+modulation:
 	;; Add modulation
-//	fld	dword [f_instrument_modo+ecx]	; Load modulation offset
-//	call	get_sine_waveform		; Get sine waveform
+    //LOAD_ADDR x6, f_instrument_modo
+    //ldr s1, [x6, x5, lsl #2]                    // s1 = Load modulation offset
+    //ldr s3, [x4, #inst_modulation]              // s3 <- inst.modulation
+    //fadd s1, s1, s3                             // s1 = s1 + modulation
+    //str s1, [x6, x5, lsl #2]                    // Store new modulation offset
+    //bl cosf                                     // s1 = cos(s1)
+    //fmul s1, s1, s8                             // s1 = s1 * waveform
+    //fmov s3, #2.0
+    //fdiv s1, s1, s3                             // s1 = s1 / 2
+
 //	mov	dword [temp_dword],16		; Put 16 in temp dword
 //	fild	dword [temp_dword]		; Load 16
 //	fdivp	st1,st0				; Divide modulation with 16 and pop
@@ -466,12 +468,12 @@ get_instrument_value:
 
 	;; Input:	s1 <- Position
 	;; Output:	s1 <- Value
-_get_sine_waveform:
+get_sine_waveform:
     PUSH_LINK_REGISTER
-    bl cosf                          //	fcos					; sin(st0) -> st0
+    bl cosf                         // cos(s1) -> s1
     LOAD_ADDR x3, f_sine_amp
     ldr s2, [x3]
-    fmul s1, s1, s2                 //	fmul	dword [f_sine_amp]		; st0 * amp -> st0
+    fmul s1, s1, s2                 // s1 = s1 * 32767
     POP_LINK_REGISTER
 	ret
 
@@ -822,10 +824,10 @@ base1:
     .quad _get_square_waveform
     .float 30, 2000, 0.0, 0, 0.000, 0.00000001
 hit1:
-    .quad _get_sine_waveform
+    .quad get_sine_waveform
     .float 5, 20000, 0.0, 0, 0.0003, 0.0
 tom_drum:
-    .quad _get_sine_waveform
+    .quad get_sine_waveform
     .float 5, 6000, 0.0, 0, 0.0, -0.000003
 background_base:
     .quad _get_square_waveform
@@ -834,7 +836,7 @@ melody_triangle:
     .quad _get_sawtooth_waveform
     .float 5, 40000, 0.0, 0, 0.0, 0.0
 melody_sine1:
-    .quad _get_sine_waveform
+    .quad get_sine_waveform
     .float 10, 6000, 0.0, 0, 0.0005, 0.0
 base_2:
     .quad _get_square_waveform
