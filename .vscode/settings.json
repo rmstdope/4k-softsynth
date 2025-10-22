@@ -14,9 +14,81 @@
             "cwd": "/Users/henrikku/repos/4ke/bin",
             "binaryPath": "/Users/henrikku/repos/4ke/bin/4k",
             "binaryArgs": []
+        },
+        {
+            "cwd": "/Users/henrikku/repos/4k-softsynth/softsynth/bin",
+            "binaryPath": "/Users/henrikku/repos/4k-softsynth/softsynth/bin/test_softsynth",
+            "binaryArgs": []
         }
     ],
     "files.associations": {
-        "iostream": "cpp"
+        "iostream": "cpp",
+        "*.asm": "arm.aarch64-assembly",
+        "*.s": "arm.aarch64-assembly",
+        "*.S": "arm.aarch64-assembly"
+    },
+    "debug.allowBreakpointsEverywhere": true,
+    "C_Cpp.default.compilerPath": "/usr/bin/clang++",
+    "C_Cpp.debugShortcut": true,
+    "debug.disassemblyView.showSourceCode": true,
+    "debug.disassemblyView.showBytes": true,
+    "debug.showInlineSourceCode": true,
+    "cSpell.enabled": false,
+    "[arm.aarch64-assembly]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 4,
+    },
+    "editor.tokenColorCustomizations": {
+        "textMateRules": [
+            {
+                "scope": "keyword.mnemonic.arm",
+                "settings": {
+                    "foreground": "#4CAEAE",
+                    "fontStyle": "bold"
+                }
+            },
+            {
+                "scope": "comment.line.arm",
+                "settings": {
+                    "foreground": "#7EC699",
+                    "fontStyle": "italic"
+                }
+            },
+            {
+                "scope": "variable.register.arm",
+                "settings": {
+                    "foreground": "#68A9EB",
+                    "fontStyle": ""
+                }
+            },
+            {
+                "scope": "constant.numeric.arm",
+                "settings": {
+                    "foreground": "#D34AD8",
+                    "fontStyle": ""
+                }
+            },
+            {
+                "scope": "entity.name.label.arm",
+                "settings": {
+                    "foreground": "#FFD76A",
+                    "fontStyle": ""
+                }
+            },
+            {
+                "scope": "support.directive.arm",
+                "settings": {
+                    "foreground": "#FD4444",
+                    "fontStyle": ""
+                }
+            },
+            {
+                "scope": "displacement_op2.arm",
+                "settings": {
+                    "foreground": "#E8F348",
+                    "fontStyle": ""
+                }
+            }
+        ]
     }
 }

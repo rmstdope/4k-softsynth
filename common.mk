@@ -16,17 +16,14 @@ TARGET=mac64
 FULL=WINDOW
 
 # Set to DEBUG or RELEASE
-#DEB = RELEASE
-DEB = DEBUG
+#VARIANT = RELEASE
+VARIANT=DEBUG
 
 # Flags based on DEBUG/RELEASE
-CC_DEBUG_FLAGS_DEBUG=-g -DDEBUG
-CC_DEBUG_FLAGS_RELEASE=-s
-ASM_DEBUG_FLAGS_DEBUG=-g -DDEBUG
-ASM_DEBUG_FLAGS_RELEASE=
-
-# Comment this out to use OS loading of dlls
-#MANUAL_DLL_LOAD=doit
+#CC_DEBUG_FLAGS_DEBUG=-g -DDEBUG
+#CC_DEBUG_FLAGS_RELEASE=-s
+#ASM_DEBUG_FLAGS_DEBUG=-g -DDEBUG
+#ASM_DEBUG_FLAGS_RELEASE=
 
 # Win32
 #ASMTARGET_win32=-f win32 -DBIT32
@@ -44,7 +41,6 @@ LINKOPT_EDITOR_cygwin=-m32 -lSDL -luGL
 ASMOPT_cygwin=-DPREFIX -DSO -DRET
 PACK_cygwin=./pack.sh
 CC_FLAGS_cygwin=-m32
-EXEC_SUFFIX_cygwin=.exe
 STRIP_cygwin=strip
 REMOVE_ELF_HEADER_cygwin = echo
 ASM_cygwin=nasm
@@ -75,36 +71,50 @@ ASM_linux32=nasm
 # 64-bit Mac (Mx)
 
 # Set generic flags
-ASMTARGET=$(ASMTARGET_$(TARGET))
-OBJ_POSTFIX=$(OBJ_POSTFIX_$(TARGET))
-LINKOPT_INTRO=$(LINKOPT_INTRO_$(TARGET))
-LINKOPT_EDITOR=$(LINKOPT_EDITOR_$(TARGET))
-ASMOPT=$(ASMOPT_$(TARGET))
-PACK=$(PACK_$(TARGET))
-STRIP=$(STRIP_$(TARGET))
-REMOVE_ELF_HEADER=$(REMOVE_ELF_HEADER_$(TARGET))
-ASM_FLAGS=$(ASM_DEBUG_FLAGS_$(DEB))
-CC_FLAGS=$(CC_DEBUG_FLAGS_$(DEB)) $(CC_FLAGS_$(TARGET))
-ASM=$(ASM_$(TARGET))
+#ASMTARGET=$(ASMTARGET_$(TARGET))
+#OBJ_POSTFIX=$(OBJ_POSTFIX_$(TARGET))
+#LINKOPT_INTRO=$(LINKOPT_INTRO_$(TARGET))
+#LINKOPT_EDITOR=$(LINKOPT_EDITOR_$(TARGET))
+#ASMOPT=$(ASMOPT_$(TARGET))
+#PACK=$(PACK_$(TARGET))
+#STRIP=$(STRIP_$(TARGET))
+#REMOVE_ELF_HEADER=$(REMOVE_ELF_HEADER_$(TARGET))
+#ASM_FLAGS=$(ASM_DEBUG_FLAGS_$(DEB))
+#CC_FLAGS=$(CC_DEBUG_FLAGS_$(DEB)) $(CC_FLAGS_$(TARGET))
+#ASM=$(ASM_$(TARGET))
+
+ifeq ($(VARIANT),DEBUG)
+	ASM_FLAGS_VARIANT=-DDEBUG -g3 -O0 -gdwarf-4 -fno-omit-frame-pointer
+	CC_FLAGS_VARIANT=-DDEBUG -g3 -O0 -fno-omit-frame-pointer
+	LINK_FLAGS_VARIANT=-g3 -O0 -fno-omit-frame-pointer
+else
+	ASM_FLAGS_VARIANT=-Os
+	CC_FLAGS_VARIANT=-Os
+	LINK_FLAGS_VARIANT=-s -nostdlib
+endif
+
 ifeq ($(TARGET),linux32)
 	ARCH = x86
 	CC = g++
 else ifeq ($(TARGET),mac64)
 	ARCH = arm64
-	ASMTARGET=-c -g -DDEBUG -Iinclude -arch arm64
+	ASM_FLAGS=$(ASM_FLAGS_VARIANT) -c -arch arm64
 	OBJ_POSTFIX=o
-	LINKOPT_INTRO=-lc -m64 -nostdlib
-	LINKOPT_EDITOR=-m64 -framework OpenGL /opt/homebrew/Cellar/sdl2/2.32.10/lib/libSDL2.dylib
-	ASMOPT= -O0 -Og
+	LINK_FLAGS=$(LINK_FLAGS_VARIANT) -lc -arch arm64
+	OGL_LIBRARY_LINK=-framework OpenGL
+	SDL_LIBRARY_LINK=/opt/homebrew/Cellar/sdl2/2.32.10/lib/libSDL2.dylib
 	PACK=../scripts/pack.sh
-	CC_FLAGS=$(CC_DEBUG_FLAGS_$(DEB)) -m64
-	STRIP=../../ELFkickers/sstrip/sstrip -z
+	CC_FLAGS=$(CC_FLAGS_VARIANT) -arch arm64
+	STRIP=strip -x
 	REMOVE_ELF_HEADER = echo
 	ASM=clang++
-	CC = clang++
+	CC=clang
+	CXX=clang++
+	INCLUDE_PATH=-I/opt/homebrew/Cellar/sdl2/2.32.10/include -Iinclude
 else ifeq ($(TARGET),cygwin)
 	ARCH = x86
 	CC = g++
+	EXEC_SUFFIX=.exe
 else
 	Fail!
 endif

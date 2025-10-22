@@ -1,55 +1,52 @@
 include ../common.mk
 
-INC_DIRS=-IglTexFont-r6
+#INC_DIRS=-IglTexFont-r6
 
-INTRO_OBJ=bin/main.$(OBJ_POSTFIX) bin/softsynth.$(OBJ_POSTFIX)
+SONG_OBJ=bin/song.$(OBJ_POSTFIX)
+SOFTSYNTH_OBJ=bin/softsynth.$(OBJ_POSTFIX)
+PLAYER_OBJ=bin/main.$(OBJ_POSTFIX) $(SOFTSYNTH_OBJ) $(SONG_OBJ)
+TESTS_OBJ=bin/test_softsynth.$(OBJ_POSTFIX) bin/unity.$(OBJ_POSTFIX) $(SOFTSYNTH_OBJ)
 
-ifdef MANUAL_DLL_LOAD
-	INTRO_OBJ+= dynamic_library.$(OBJ_POSTFIX)
-else
-	LINKOPT_INTRO+=-dynamic -lSDL
+PLAYER=bin/softsynth-packed
+UNPACKED_PLAYER=bin/softsynth$(EXEC_SUFFIX)
+TESTS=bin/test_softsynth$(EXEC_SUFFIX)
+
+all: $(TESTS) $(PLAYER)
+
+bin/:
+	mkdir -p bin
+
+$(PLAYER): $(UNPACKED_PLAYER) Makefile | bin/
+ifeq ($(VARIANT),RELEASE)
+	$(STRIP) $(UNPACKED_PLAYER)
+	$(REMOVE_ELF_HEADER) $(UNPACKED_PLAYER)
 endif
+	$(PACK) $(UNPACKED_PLAYER) $@
 
-NAME = softsynth-packed
-UNPACKED = softsynth$(EXEC_SUFFIX_$(TARGET))
+$(UNPACKED_PLAYER): $(PLAYER_OBJ) Makefile | bin/
+	$(CXX) $(LINK_FLAGS) $(OGL_LIBRARY_LINK) $(SDL_LIBRARY_LINK) $(PLAYER_OBJ) -o $@
 
-all: $(NAME) bin/softsynth_wrapper.$(OBJ_POSTFIX)
+bin/main.$(OBJ_POSTFIX): src/main.cpp Makefile | bin/
+	$(CXX) $(INC_DIRS) $(CC_FLAGS) $(INCLUDE_PATH) -c  -o $@ $<
 
-$(NAME): $(UNPACKED) Makefile
-	$(STRIP) $(UNPACKED)
-	$(REMOVE_ELF_HEADER) $(UNPACKED)
-	$(PACK) $(UNPACKED) $@
+bin/softsynth.$(OBJ_POSTFIX): src/$(ARCH)/softsynth.asm src/$(ARCH)/common.asm include/defines.h Makefile | bin/
+	$(ASM) $(ASM_FLAGS) $(ASM_FLAGS) -o $@ $<
 
-$(UNPACKED): $(INTRO_OBJ) Makefile
-	$(CC) $(CC_FLAGS) -o $@ $(INTRO_OBJ) $(LINKOPT_INTRO)
+bin/song.$(OBJ_POSTFIX): src/$(ARCH)/song.asm src/$(ARCH)/common.asm include/defines.h Makefile | bin/
+	$(ASM) $(ASM_FLAGS) $(ASM_FLAGS) -o $@ $<
 
-bin/main.$(OBJ_POSTFIX): main.S debug.inc common.inc Makefile
-	$(ASM) $(ASM_FLAGS) $(ASMTARGET) -D$(FULL) -D$(DEB) $(ASMOPT) -o $@ $<
+bin/test_softsynth.$(OBJ_POSTFIX): test/$(ARCH)/test_softsynth.cpp Makefile | bin/
+	$(CXX) $(INC_DIRS) $(CC_FLAGS) $(INCLUDE_PATH) -c  -o $@ $<
 
-bin/dynamic_library.$(OBJ_POSTFIX): dynamic_library.S debug.inc Makefile
-	$(ASM) $(ASM_FLAGS) $(ASMTARGET)  -D$(DEB) $(ASMOPT) -o $@ $<
+run_tests: $(TESTS)
+	bin/test_softsynth
 
-bin/softsynth.$(OBJ_POSTFIX): softsynth_$(ARCH).S debug.inc Makefile
-	$(ASM) $(ASM_FLAGS) $(ASMTARGET) $(ASMOPT) -o $@ $<
+bin/unity.$(OBJ_POSTFIX): test/unity.c Makefile | bin/
+	$(CC) $(INC_DIRS) $(CC_FLAGS) $(INCLUDE_PATH) -c  -o $@ $<
 
-bin/softsynth_wrapper.$(OBJ_POSTFIX): softsynth_wrapper_$(ARCH).S debug.inc Makefile
-	$(ASM) $(ASM_FLAGS) $(ASMTARGET) $(ASMOPT) -o $@ $<
-
-bin/%.$(OBJ_POSTFIX): %.c Makefile
-	$(CC) $(INC_DIRS) $(CC_FLAGS) -c  -o $@ $<
-
-bin/%.$(OBJ_POSTFIX): %.cc %.hh Makefile
-	$(CC) $(INC_DIRS) $(CC_FLAGS) -c -o $@ $<
-
-bin/glTexFont.$(OBJ_POSTFIX): glTexFont-r6/glTexFont.c Makefile
-	$(CC) $(INC_DIRS) $(CC_FLAGS) -c -o $@ $<
-
-bin/glTexFontTGA.$(OBJ_POSTFIX): glTexFont-r6/glTexFontTGA.c Makefile
-	$(CC) $(INC_DIRS) $(CC_FLAGS) -c -o $@ $<
-
-bin/glTexFontColor.$(OBJ_POSTFIX): glTexFont-r6/glTexFontColor.c Makefile
-	$(CC) $(INC_DIRS) $(CC_FLAGS) -c -o $@ $<
+$(TESTS): $(TESTS_OBJ) Makefile | bin/
+	$(CC) $(LINK_FLAGS) $(OGL_LIBRARY_LINK) $(SDL_LIBRARY_LINK) $(TESTS_OBJ) -o $@
 
 clean:
-	rm -f *.$(OBJ_POSTFIX) $(UNPACKED) $(UNPACKED).exe $(NAME) core *~ $(AED) $(AED).exe
+	rm -f bin/* core *~
 

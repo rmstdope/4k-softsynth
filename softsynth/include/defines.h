@@ -1,0 +1,31 @@
+#ifndef DEFINES_H
+#define DEFINES_H
+
+// Synth constants
+#define SAMPLE_RATE 44100
+#define BEATS_PER_MINUTE 125
+#define NOTES_PER_BEAT 4
+#define SAMPLES_PER_NOTE (60 * 44100 / (BEATS_PER_MINUTE * NOTES_PER_BEAT))
+
+// Instrument constants
+#define MAX_NUM_INSTRUMENTS 1
+#define MAX_COMMANDS 32
+#define MAX_COMMAND_PARAMS 16
+
+// Song data
+#define PATTERNS_PER_INSTRUMENT 16
+#define NOTES_PER_PATTERN 62
+#define HLD 1
+#define NOTES_PER_SONG (PATTERNS_PER_INSTRUMENT * NOTES_PER_PATTERN)
+
+// Instruction IDs
+#define ENVELOPE_ID 1
+#define OSCILLATOR_ID 2
+#define STOREVAL_ID 3
+#define OPERATION_ID 4
+#define FILTER_ID 5
+#define PANNING_ID 6
+#define OUTPUT_ID 7
+#define INSTRUMENT_END 0
+
+#endif // DEFINES_H

@@ -2,17 +2,49 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "Debug editor",
+			"name": "Debug softsynth",
 			"type": "cppdbg",
 			"request": "launch",
-			"program": "${workspaceFolder}/editor/bin/editor",
+			"program": "${workspaceFolder}/softsynth/bin/softsynth",
 			"args": [],
 			"stopAtEntry": false,
-			"cwd": "${workspaceFolder}/editor",
+			"cwd": "${workspaceFolder}/softsynth",
 			"environment": [],
 			"externalConsole": false,
 			"MIMode": "lldb",
-			"preLaunchTask": "make"
+			"preLaunchTask": "make",
+			"sourceFileMap": {
+				"${workspaceFolder}/softsynth/src": "${workspaceFolder}/softsynth/src"
+			},
+			"setupCommands": [
+				{
+					"description": "Enable assembly debugging",
+					"text": "settings set target.inline-breakpoint-strategy always"
+				}
+			]
+		},
+		{
+			"name": "Debug test_softsynth",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/softsynth/bin/test_softsynth",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/softsynth",
+			"environment": [],
+			"externalConsole": false,
+			"MIMode": "lldb",
+			"preLaunchTask": "make",
+			"sourceFileMap": {
+				"${workspaceFolder}/softsynth/src": "${workspaceFolder}/softsynth/src",
+				"${workspaceFolder}/softsynth/test": "${workspaceFolder}/softsynth/test"
+			},
+			"setupCommands": [
+				{
+					"description": "Enable assembly debugging",
+					"text": "settings set target.inline-breakpoint-strategy always"
+				}
+			]
 		}
 	]
 }

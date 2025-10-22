@@ -36,13 +36,17 @@ bool AudioEditor::Initialize()
     else
     {
 
+        // DEBUG Call the render function a number of times to debug
+        for (int i = 0; i < 100; i++)
+            dope4ks_render();
+
         // Init audio
         SDL_AudioSpec desired;
         SDL_AudioSpec obtained;
-        desired.freq = 44100;          // 44kHz
-        desired.format = AUDIO_S16SYS; // 16Bit
-        desired.channels = 1;          // Mono
-        desired.samples = 4096;        // 1024 samples per callback
+        desired.freq = 44100;                       // 44kHz
+        desired.format = AUDIO_S16SYS;              // 16Bit
+        desired.channels = 1;                       // Mono
+        desired.samples = (44100 * 60) / (125 * 4); // 1 note per callback
         desired.callback = ::AudioCallback;
         desired.userdata = this;
         if ((ret = SDL_OpenAudio(&desired, &obtained)) != 0)

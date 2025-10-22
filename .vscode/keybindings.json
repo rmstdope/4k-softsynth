@@ -1,0 +1,12 @@
+[
+    {
+        "key": "f9",
+        "command": "editor.debug.action.toggleBreakpoint",
+        "when": "editorTextFocus && (resourceExtname == '.asm' || editorLangId == 'arm.aarch64-assembly')"
+    },
+    {
+        "key": "cmd+f9", 
+        "command": "editor.debug.action.toggleBreakpoint",
+        "when": "editorTextFocus"
+    }
+]
