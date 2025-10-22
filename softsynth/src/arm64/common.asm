@@ -104,6 +104,12 @@
 .equ OUTPUT_PARAM_GAIN,         0
 .equ OUTPUT_PARAM_SIZE,         OUTPUT_PARAM_GAIN + 4
 
+// Accumulate
+.macro ACCUMULATE
+.endmacro
+
+.equ ACCUMULATE_PARAM_SIZE,         0
+
 /// Instrument state structure
 .equ instrument_note,           0
 .equ instrument_release,        instrument_note + 4

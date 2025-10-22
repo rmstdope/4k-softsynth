@@ -8,12 +8,12 @@
 // extern "C" void softsynth_init(void);
 // extern "C" void softsynth_playback(void *userdata, Uint8 *stream, int len);
 
-char data[64];
+float data[SAMPLES_PER_NOTE];
 
 // #define FULLSCREEN
 int main(void)
 {
-    dope4ks_render(NULL, (Uint8 *)data, 64);
+    dope4ks_render(NULL, (uint8_t *)data, SAMPLES_PER_NOTE);
 
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Window *window = SDL_CreateWindow(NULL, 0, 0, 1024, 768, SDL_WINDOW_OPENGL);

@@ -17,15 +17,22 @@
 instrument_instructions:
 INSTRUMENT_START Instrument1
     .byte ENVELOPE_ID
-    .byte STOREVAL_ID
-    .byte OSCILLATOR_ID
-    // .byte OPERATION_ID
+    // .byte STOREVAL_ID
+    // .byte OSCILLATOR_ID
+    // // .byte OPERATION_ID
     // .byte FILTER_ID
     // .byte PANNING_ID
-    // .byte OUTPUT_ID
+    .byte OUTPUT_ID
+    .byte INSTRUMENT_END
+INSTRUMENT_START Instrument2
+    .byte INSTRUMENT_END
+INSTRUMENT_START Instrument3
+    .byte INSTRUMENT_END
+INSTRUMENT_START Instrument4
     .byte INSTRUMENT_END
 song_instructions:
 INSTRUMENT_START Song
+    .byte ACCUMULATE_ID
     .byte OUTPUT_ID
     .byte INSTRUMENT_END
 
@@ -35,21 +42,20 @@ INSTRUMENT_START Song
 instrument_parameters:
 INSTRUMENT_START Instrument1 
     ENVELOPE ENV_ATTACK(0), ENV_DECAY(76), ENV_SUSTAIN(0), ENV_RELEASE(0), ENV_GAIN(32)
-    STOREVAL STORE_AMOUNT(128), STORE_DEST(instrument_workspaces + 0 * MAX_COMMAND_PARAMS + ENVELOPE_WS_GAIN_MOD)
-    OSCILLATOR OSCILLATOR_TRANSPOSE(64), OSCILLATOR_DETUNE(64), OSCILLATOR_PHASE(64), OSCILLATOR_GATES(0), OSCILLATOR_COLOR(64), OSCILLATOR_SHAPE(64), OSCILLATOR_GAIN(128), OSCILLATOR_TYPE(OSCILLATOR_SINE)
+    // STOREVAL STORE_AMOUNT(128), STORE_DEST(instrument_workspaces + 0 * MAX_COMMAND_PARAMS + ENVELOPE_WS_GAIN_MOD)
+    // OSCILLATOR OSCILLATOR_TRANSPOSE(64), OSCILLATOR_DETUNE(64), OSCILLATOR_PHASE(64), OSCILLATOR_GATES(0), OSCILLATOR_COLOR(64), OSCILLATOR_SHAPE(64), OSCILLATOR_GAIN(128), OSCILLATOR_TYPE(OSCILLATOR_SINE)
     // OPERATION OPERATION_TYPE(OPERATION_MULP)
     // FILTER FILTER_TYPE(LOWPASS), FILTER_FREQUENCY(80), FILTER_RESONANCE(128)
     // PAN PAN_VALUE(64)
     OUTPUT OUTPUT_GAIN(64)
-    .byte INSTRUMENT_END
 song_parameters:
 INSTRUMENT_START Song
+    ACCUMULATE
     OUTPUT OUTPUT_GAIN(128)
-    .byte INSTRUMENT_END
 
 instrument_patterns:
-instrument_1_patterns:  .byte   0,  0,  0,  0,  0,  0,  0,  0,  1,  2,  3,  0,  4,  5,  6,  7,  0,  0,  0,  0,  0,  0,  0,  0,  1,  2,  3,  0,  4,  5,  6,  7,  0,  0,  0,  0,  0,  0,  0,  0,  1,  2,  3,  0,  4,  5,  6,  7,  1,  2,  3,  0,  4,  5,  6,  7,  8,  2,  9,  0,  0,  0
 instrument_2_patterns:  .byte   9,  7, 10,  7, 11,  7, 12,  7,  9,  7, 10,  7, 11,  7, 12,  7,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 12,  7, 13,  7, 14,  7,  3,  7,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 12,  7,  0,  0
+instrument_1_patterns:  .byte   0,  0,  0,  0,  0,  0,  0,  0,  1,  2,  3,  0,  4,  5,  6,  7,  0,  0,  0,  0,  0,  0,  0,  0,  1,  2,  3,  0,  4,  5,  6,  7,  0,  0,  0,  0,  0,  0,  0,  0,  1,  2,  3,  0,  4,  5,  6,  7,  1,  2,  3,  0,  4,  5,  6,  7,  8,  2,  9,  0,  0,  0
 instrument_3_patterns:  .byte  15,  0, 16,  0, 17,  0, 18,  0, 19,  0, 16,  0, 17,  0, 18,  0, 20, 20, 21, 21, 22, 22, 20, 20, 20, 20, 21, 21, 22, 22, 20, 20, 23, 15, 24, 16, 25, 17, 18,  0, 20, 20, 21, 21, 22, 22, 20, 20, 20, 20, 21, 21, 22, 22, 20, 20, 20, 20,  0,  0,  0,  0
 instrument_4_patterns:  .byte   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26,  0,  0,  0,  0,  0,  0,  0,  0, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26,  0,  0,  0,  0,  0
 instrument_5_patterns:  .byte   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 27, 26, 27, 26, 27, 26, 27, 28, 27, 26, 27, 26, 27, 26, 27, 28, 27, 29, 27, 29, 27, 29, 27, 29, 27, 26, 27, 26, 27, 26, 27, 28, 27, 26, 27, 26, 27, 26, 27, 28, 27, 26, 27,  0,  0,  0

@@ -1,6 +1,8 @@
 #ifndef SOFT_SYNTH_H
 #define SOFT_SYNTH_H
 
+#include "defines.h"
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -14,6 +16,7 @@ extern "C"
     void envelope_function(void);
     void storeval_function(void);
     void output_function(void);
+    void accumulate_function(void);
     void process_stack(void);
     extern void (*instrument_instructions_lookup[256])(void);
     void new_instrument_note(void);

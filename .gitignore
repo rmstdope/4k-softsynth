@@ -14,7 +14,6 @@ SDL.dll
 packages
 bin/
 obj/
-old/
 
 # MacOS specific files
 .DS_Store

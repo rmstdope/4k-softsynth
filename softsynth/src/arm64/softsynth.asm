@@ -42,6 +42,8 @@
 #define oscillator_function _oscillator_function
 .global _output_function
 #define output_function _output_function
+.global _accumulate_function
+#define accumulate_function _accumulate_function
 .global _process_stack
 #define process_stack _process_stack
 .global _instrument_instructions_lookup
@@ -73,21 +75,32 @@
 ///     x4 = current instrument parameters pointer
 ///     x5 = instrument data pointer
 ///     x6 = instrument instructions pointer
+///     x7 = instrument instruction workspace pointer
 ///     x8 = VM stack data pointer
+///     x9 = transformed instrument instruction parameters pointer
+///     x10 = synth data pointer
 ///     
 dope4ks_render:
     PUSH_LINK_REGISTER
     // Initialize pointers
-    LOAD_ADDR   x4, instrument_parameters
-    LOAD_ADDR   x6, instrument_instructions
     LOAD_ADDR   x0, dope4ks_current_note
-    LOAD_ADDR   x8, vm_stack_data
+    // Constants
+    fmov        s31, #0.5
+    ldr         s30, inv_128_const
+    ldr         s29, inv_12_const
+    fmov        s28, #1.0
+    ldr         s27, pi2_const
+    fmov        s26, #-1.0
     // x0 is current note #
     ldr         w0, [x0]
     // x2 is current sample #
     mov         x2, #0
 render_sampleloop:
-    LOAD_ADDR   x5, synth_data
+    LOAD_ADDR   x4, instrument_parameters
+    LOAD_ADDR   x6, instrument_instructions
+    LOAD_ADDR   x8, vm_stack_data
+    LOAD_ADDR   x10, synth_data
+    mov         x5, x10
     // x3 is current instrument #
     mov         x3, #0
 render_instrumentloop:
@@ -106,14 +119,14 @@ no_new_note:
     // Fake a note on the synth vm to force rendering
     str         w5, [x5, #instrument_note]
     bl          process_stack
-    ldr         s0, [x8, #-4]
+    ldr         s0, [x5, #instrument_output]
     fmin        s0, s0, s28
     fmax        s0, s0, s26
     str         s0, [x1], #4
     // Advance to nextsample
     add         x2, x2, #1                              // x2 = current sample + 1
     // Are we done?
-    ldr         x17, near_samples_per_note
+    ldr         w17, near_samples_per_note
     cmp         x2, x17
     b.lt        render_sampleloop
     POP_LINK_REGISTER
@@ -127,18 +140,21 @@ near_samples_per_note:  .word SAMPLES_PER_NOTE
 ///     x0 = current note #
 ///     x2 = current sample #
 ///     x3 = current instrument #
-///     x4 = instrument instruction parameters pointer
+///     x4 = current instrument parameters pointer
 ///     x5 = instrument data pointer
 ///     x6 = instrument instructions pointer
+///     x7 = instrument instruction workspace pointer
 ///     x8 = VM stack data pointer
+///     x9 = transformed instrument instruction parameters pointer
+///     x10 = synth data pointer
 render_instrument:
     PUSH_LINK_REGISTER
     // Process the VM instructions for this instrument
     bl          process_stack
     // Load envelope state for the first envelope instruction of the instrument
-    ldr          w1, [x5, #(instrument_workspaces + ENVELOPE_WS_STATE)]
+    ldr         w12, [x5, #(instrument_workspaces + ENVELOPE_WS_STATE)]
     // Kill the note if ENV_STATE_OFF
-    cmp         w2, #ENV_STATE_OFF
+    cmp         w12, #ENV_STATE_OFF
     bne         render_instrument_done
     // Kill note if envelope is done
     str     wzr, [x5, #instrument_note]
@@ -153,10 +169,13 @@ render_instrument_done:
 ///     x0 = current note #
 ///     x2 = current sample #
 ///     x3 = current instrument #
-///     x4 = instrument instruction parameters pointer
+///     x4 = current instrument parameters pointer
 ///     x5 = instrument data pointer
 ///     x6 = instrument instructions pointer
+///     x7 = instrument instruction workspace pointer
 ///     x8 = VM stack data pointer
+///     x9 = transformed instrument instruction parameters pointer
+///     x10 = synth data pointer
 new_instrument_note:
     // x16 = current pattern index (note# / NOTES_PER_PATTERN)
     // x15 = note in current pattern (note# % NOTES_PER_PATTERN)
@@ -199,14 +218,16 @@ new_instrument_note:
 ///
 /// Process the VM instructions for the current instrument
 ///
-///     x0 = note #
-///     x2 = sample #
-///     x3 = instrument #
-///     x4 = instrument parameters pointer
+///     x0 = current note #
+///     x2 = current sample #
+///     x3 = current instrument #
+///     x4 = current instrument parameters pointer
 ///     x5 = instrument data pointer
-///     x6 = instrument instruction pointer
+///     x6 = instrument instructions pointer
 ///     x7 = instrument instruction workspace pointer
 ///     x8 = VM stack data pointer
+///     x9 = transformed instrument instruction parameters pointer
+///     x10 = synth data pointer
 process_stack:
     PUSH_LINK_REGISTER
     // Load workspace pointer (instrument data + 8)
@@ -232,11 +253,16 @@ stack_loop:
 /// Envelope function
 ///
 /// Input registers:
-///     x4 = instrument instruction parameters pointer
+///     x0 = current note #
+///     x2 = current sample #
+///     x3 = current instrument #
+///     x4 = current instrument parameters pointer
 ///     x5 = instrument data pointer
-///     x7 = current instrument instruction workspace pointer
+///     x6 = instrument instructions pointer
+///     x7 = instrument instruction workspace pointer
 ///     x8 = VM stack data pointer
 ///     x9 = transformed instrument instruction parameters pointer
+///     x10 = synth data pointer
 /// Destroyed registers:
 ///     x17
 envelope_function:
@@ -316,13 +342,20 @@ envelope_done:
 ///
 ///
 /// Input registers:
-///     x4 = instrument instruction parameters pointer
+///     x0 = current note #
+///     x2 = current sample #
+///     x3 = current instrument #
+///     x4 = current instrument parameters pointer
+///     x5 = instrument data pointer
+///     x6 = instrument instructions pointer
+///     x7 = instrument instruction workspace pointer
+///     x8 = VM stack data pointer
 ///     x9 = transformed instrument instruction parameters pointer
-///     x17 = parameter index (0-4)
+///     x10 = synth data pointer
 /// Output registers:
 ///     s1 = computed value
 /// Destroyed registers:
-///     x9, x10, x11, x12, x13, x14, x15
+///     x9, x11, x12, x13, x14, x15
 ///     s1, s2, s3, s4, s5
 envelope_map:
     // Load correct ADSR parameter value into s1, multiply with 24 and negate
@@ -334,7 +367,7 @@ envelope_map:
 /// Compute pow(2, s1) = 2^s1
 /// Input: s1 = x
 /// Output: s1 = 2^x
-/// Destroyed registers: x10, x11, s2, s3, s4, s5, s6, s7, s8
+/// Destroyed registers: x11, s2, s3, s4, s5, s6, s7, s8
 pwr:
     // Method: 2^x = exp(x * ln(2))
     // First compute x * ln(2)
@@ -349,8 +382,8 @@ pwr:
     // exp(int_part) = 2^(int_part / ln(2))
     
     // Split into integer and fractional parts
-    fcvtzs  w10, s3                 // w10 = integer part of x*ln(2)
-    scvtf   s4, w10                 // s4 = float(integer part)
+    fcvtzs  w12, s3                 // w12 = integer part of x*ln(2)
+    scvtf   s4, w12                 // s4 = float(integer part)
     fsub    s5, s3, s4              // s5 = fractional part
     
     // Compute exp(fractional_part) using Taylor series
@@ -379,22 +412,22 @@ pwr:
     fadd    s6, s6, s7              // s6 = 1 + x + x²/2 + x³/6 + x⁴/24
     
     // Now handle the integer part: 2^(int_part / ln(2))
-    cmp     w10, #0
+    cmp     w12, #0
     beq     .pwr_no_int_part
     bmi     .pwr_negative_int_part
     
     // Positive integer part: multiply by 2^int_part
     mov     w11, #1
-    lsl     w11, w11, w10           // w11 = 2^int_part
+    lsl     w11, w11, w12           // w11 = 2^int_part
     scvtf   s7, w11                 // s7 = 2^int_part as float
     fmul    s6, s6, s7              // s6 = exp(frac) * 2^int
     b       .pwr_no_int_part
     
 .pwr_negative_int_part:
     // Negative integer part: divide by 2^abs(int_part)
-    neg     w10, w10                // w10 = abs(int_part)
+    neg     w12, w12                // w12 = abs(int_part)
     mov     w11, #1
-    lsl     w11, w11, w10           // w11 = 2^abs(int_part)
+    lsl     w11, w11, w12           // w11 = 2^abs(int_part)
     scvtf   s7, w11                 // s7 = 2^abs(int_part) as float
     fdiv    s6, s6, s7              // s6 = exp(frac) / 2^abs(int)
     
@@ -408,20 +441,18 @@ pwr:
 /// Oscillator function
 ///
 /// Input registers:
-///     x4 = instrument instruction parameters pointer
+///     x0 = current note #
+///     x2 = current sample #
+///     x3 = current instrument #
+///     x4 = current instrument parameters pointer
 ///     x5 = instrument data pointer
+///     x6 = instrument instructions pointer
 ///     x7 = instrument instruction workspace pointer
 ///     x8 = VM stack data pointer
 ///     x9 = transformed instrument instruction parameters pointer
+///     x10 = synth data pointer
 _oscillator_function:
     PUSH_LINK_REGISTER
-    // Constants
-    fmov        s31, #0.5
-    ldr         s30, inv_128_const
-    ldr         s29, inv_12_const
-    fmov        s28, #1.0
-    ldr         s27, pi2_const
-    fmov        s26, #-1.0
     // Transform parameters
     mov         x17, #7
     bl          transform_values
@@ -568,11 +599,16 @@ cosine_waveform:
 /// Store value function
 ///
 /// Input registers:
-///     x4 = instrument instruction parameters pointer
+///     x0 = current note #
+///     x2 = current sample #
+///     x3 = current instrument #
+///     x4 = current instrument parameters pointer
 ///     x5 = instrument data pointer
+///     x6 = instrument instructions pointer
 ///     x7 = instrument instruction workspace pointer
 ///     x8 = VM stack data pointer
 ///     x9 = transformed instrument instruction parameters pointer
+///     x10 = synth data pointer
 /// Destroyed registers:
 storeval_function:
     PUSH_LINK_REGISTER
@@ -611,11 +647,16 @@ storeval_function:
 /// Output function
 ///
 /// Input registers:
-///     x4 = instrument instruction parameters pointer
+///     x0 = current note #
+///     x2 = current sample #
+///     x3 = current instrument #
+///     x4 = current instrument parameters pointer
 ///     x5 = instrument data pointer
+///     x6 = instrument instructions pointer
 ///     x7 = instrument instruction workspace pointer
 ///     x8 = VM stack data pointer
 ///     x9 = transformed instrument instruction parameters pointer
+///     x10 = synth data pointer
 /// Destroyed registers:
 output_function:
     PUSH_LINK_REGISTER
@@ -633,21 +674,60 @@ output_function:
     ret
 
 ///
+/// Accumulate function
+///
+/// Input registers:
+///     x0 = current note #
+///     x2 = current sample #
+///     x3 = current instrument #
+///     x4 = current instrument parameters pointer
+///     x5 = instrument data pointer
+///     x6 = instrument instructions pointer
+///     x7 = instrument instruction workspace pointer
+///     x8 = VM stack data pointer
+///     x9 = transformed instrument instruction parameters pointer
+///     x10 = synth data pointer
+/// Destroyed registers:
+accumulate_function:
+    PUSH_LINK_REGISTER
+    mov         x13, x10
+    mov         x11, #MAX_NUM_INSTRUMENTS
+    fmov        s0, wzr
+.accumulate_loop:
+    // Load instrument output
+    ldr         s1, [x13, #instrument_output]
+    fadd         s0, s0, s1
+    add         x13, x13, #instrument_length
+    subs        x11, x11, #1
+    b.ne        .accumulate_loop
+    str         s0, [x8], #4
+    POP_LINK_REGISTER
+    ret
+
+///
 /// Convert [x17] 8-bit values in [x4] to floats in [_transformed_parameters]
 ///
 /// Input registers:
-///     x4 = pointer to 8-bit values
-///     x17 = number of values
+///     x0 = current note #
+///     x2 = current sample #
+///     x3 = current instrument #
+///     x4 = current instrument parameters pointer
+///     x5 = instrument data pointer
+///     x6 = instrument instructions pointer
+///     x7 = instrument instruction workspace pointer
+///     x8 = VM stack data pointer
+///     x9 = transformed instrument instruction parameters pointer
+///     x10 = synth data pointer
 /// Output registers:
 ///     x4 = point to next 8-bit value
 ///     x9 = point to transformed parameters
 /// Destroyed registers:
-///     x9, x10, w14, x17
+///     x9, w14, x17
 ///     s0, s3
 transform_values:
     // x9 = pointer to transformed parameters
     LOAD_ADDR   x9, transformed_parameters
-    mov         x10, x9
+    mov         x11, x9
     // Load 1/128 constant from memory into s3
     ldr         s3, inv_128_const
 1:
@@ -657,7 +737,7 @@ transform_values:
     // Divide by 128
     fmul        s0, s0, s3
     // Store result and advance pointer
-    str         s0, [x10], #4
+    str         s0, [x11], #4
     // Are we done?
     subs        w17, w17, #1
     bne         1b
@@ -694,6 +774,7 @@ instrument_instructions_lookup:
                     .quad 0 // filter_function (not implemented)
                     .quad 0 // panning_function (not implemented)
                     .quad output_function
+                    .quad accumulate_function
 
 .bss
 
