@@ -12,9 +12,21 @@ Debug
 *.user
 SDL.dll
 packages
-bin/
-obj/
 
 # MacOS specific files
 .DS_Store
 ._*
+
+# Log files
+*.log
+
+# Compiled binary object and library files
+bin/
+obj/
+*.so
+
+# Python
+.venv
+__pycache__/
+build/
+

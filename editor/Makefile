@@ -1,52 +1,96 @@
-include ../common.mk
+# Makefile for 4K Softsynth Editor
 
-INC_DIRS=-I../glTexFont-r6 -I../softsynth -I/opt/homebrew/Cellar/sdl2/2.32.10/include/
+.PHONY: all install build clean run test help venv
 
-EDITOR_OBJ = bin/AudioEditor.$(OBJ_POSTFIX)				\
-		bin/EditBase.$(OBJ_POSTFIX) bin/PatternEdit.$(OBJ_POSTFIX)	\
-		bin/TrackEdit.$(OBJ_POSTFIX) bin/InstrumentEdit.$(OBJ_POSTFIX)	\
-		bin/aed_main.$(OBJ_POSTFIX) ../softsynth/bin/softsynth.$(OBJ_POSTFIX) \
-		../softsynth/bin/softsynth_wrapper.$(OBJ_POSTFIX)		\
-		bin/glTexFont.$(OBJ_POSTFIX) bin/glTexFontTGA.$(OBJ_POSTFIX)	\
-		bin/glTexFontColor.$(OBJ_POSTFIX)
+# Default target
+all: install build
 
-TEST_OBJ = bin/Test.$(OBJ_POSTFIX)
+# Setup virtual environment and install dependencies
+install: venv
+	@echo "Installing Python dependencies..."
+	./venv/bin/pip install --upgrade pip
+	./venv/bin/pip install -r requirements.txt
+	./venv/bin/pip install setuptools wheel build pytest
 
-EDITOR = bin/editor
-TEST = bin/test
+# Create virtual environment
+venv:
+	@echo "Creating Python virtual environment..."
+	python3 -m venv venv
+	@echo "Virtual environment created in ./venv"
 
-all: $(EDITOR) $(TEST)
+# Build C++ extension
+build: build-softsynth
+	@echo "Building C++ extension..."
+	./venv/bin/python setup.py build_ext --inplace
 
-bin:
-	mkdir -p bin
+# Build the ARM64 softsynth dependency
+build-softsynth:
+	@echo "Building ARM64 softsynth..."
+	cd ../softsynth && make clean && make all
 
-precompile: bin Makefile ../common.mk
-	
+# Run the editor
+run:
+	@echo "Starting 4K Softsynth Editor..."
+	./venv/bin/python main.py
 
-softsynth:
-	$(MAKE) -C ../softsynth bin/softsynth.$(OBJ_POSTFIX) bin/softsynth_wrapper.$(OBJ_POSTFIX)
+# Run tests
+test:
+	@echo "Running tests..."
+	./venv/bin/python -m pytest tests/ -v
 
-$(EDITOR): softsynth $(EDITOR_OBJ) precompile
-	$(CC) $(CC_FLAGS) -o $@ $(EDITOR_OBJ) $(LINKOPT_EDITOR)
-
-$(TEST): $(TEST_OBJ) precompile
-	$(CC) $(CC_FLAGS) -o $@ $(TEST_OBJ) $(LINKOPT_EDITOR)
-
-bin/%.$(OBJ_POSTFIX): %.cc %.hh precompile
-	$(CC) $(INC_DIRS) $(CC_FLAGS) -c -o $@ $<
-
-bin/%.$(OBJ_POSTFIX): %.cc precompile
-	$(CC) $(INC_DIRS) $(CC_FLAGS) -c -o $@ $<
-
-bin/glTexFont.$(OBJ_POSTFIX): ../glTexFont-r6/glTexFont.c precompile
-	$(CC) $(INC_DIRS) $(CC_FLAGS) -c -o $@ $<
-
-bin/glTexFontTGA.$(OBJ_POSTFIX): ../glTexFont-r6/glTexFontTGA.c precompile
-	$(CC) $(INC_DIRS) $(CC_FLAGS) -c -o $@ $<
-
-bin/glTexFontColor.$(OBJ_POSTFIX): ../glTexFont-r6/glTexFontColor.c precompile
-	$(CC) $(INC_DIRS) $(CC_FLAGS) -c -o $@ $<
-
+# Clean build artifacts
 clean:
-	rm -f *.$(OBJ_POSTFIX) core *~ $(TEST) $(EDITOR) $(EDITOR).exe
+	@echo "Cleaning build artifacts..."
+	rm -rf build/
+	rm -rf dist/
+	rm -rf *.egg-info/
+	rm -rf __pycache__/
+	find . -name "*.pyc" -delete
+	find . -name "*.pyo" -delete
+	find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+	rm -f *.so
+	rm -f synth_editor_*.log
 
+# Deep clean (includes virtual environment)
+distclean: clean
+	@echo "Removing virtual environment..."
+	rm -rf venv/
+
+# Install development dependencies
+dev-install: install
+	./venv/bin/pip install black flake8 mypy
+
+# Format code
+format:
+	./venv/bin/python -m black .
+
+# Lint code
+lint:
+	./venv/bin/python -m flake8 .
+	./venv/bin/python -m mypy .
+
+# Package for distribution
+package: clean build
+	./venv/bin/python -m build
+
+# Install in development mode
+dev: venv
+	./venv/bin/pip install -e .
+
+# Help target
+help:
+	@echo "Available targets:"
+	@echo "  all        - Install dependencies and build (default)"
+	@echo "  install    - Create venv and install Python dependencies"
+	@echo "  venv       - Create virtual environment only"
+	@echo "  build      - Build C++ extension"
+	@echo "  run        - Run the editor application"
+	@echo "  test       - Run tests"
+	@echo "  clean      - Remove build artifacts"
+	@echo "  distclean  - Remove build artifacts and virtual environment"
+	@echo "  dev-install- Install development dependencies"
+	@echo "  format     - Format code with black"
+	@echo "  lint       - Lint code with flake8 and mypy"
+	@echo "  package    - Package for distribution"
+	@echo "  dev        - Install in development mode"
+	@echo "  help       - Show this help message"
