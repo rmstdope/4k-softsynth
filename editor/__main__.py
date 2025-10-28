@@ -56,6 +56,13 @@ class Editor:
         self.output_text = None
         self.status_var = None
 
+        # ADSR entry fields - initialized to None, will be set in _create_instrument_controllers
+        self.attack_entry = None
+        self.decay_entry = None
+        self.sustain_entry = None
+        self.release_entry = None
+        self.gain_entry = None
+
     def initialize_synth(self):
         """Initialize the synthesizer"""
         try:
@@ -127,7 +134,7 @@ class Editor:
             self.log_output("✓ ARM64 Synthesizer initialized and ready")
         else:
             self.log_output("⚠ Running in simulation mode")
-        
+
         # Add helpful instructions
         self.log_output("💡 Press 'Q' key to play a synthesizer note!")
         if self.audio and self.audio.is_initialized:
@@ -149,7 +156,7 @@ class Editor:
                 self.log_output(f"✓ Audio initialized: {device_info['device_name']}")
             else:
                 self.log_output("⚠ Audio initialization failed, running in silent mode")
-        except Exception as e:
+        except (ImportError, OSError, RuntimeError) as e:
             self.logger.error("Audio initialization error: %s", e)
             self.log_output(f"⚠ Audio error: {e}")
             self.audio = None
@@ -158,27 +165,27 @@ class Editor:
         """Set up keyboard event bindings"""
         # Make sure the window can receive focus and key events
         self.root.focus_set()
-        
+
         # Bind key press events
         self.root.bind('<Key>', self.on_key_press)
         self.root.bind('<KeyPress-q>', self.on_q_key_press)
-        
+
         # Make sure the window is focusable
         self.root.focus_force()
 
     def on_key_press(self, event):
         """Handle general key press events"""
         # You can add other key handlers here if needed
-        pass
+        # Currently handled by specific key bindings like 'q'
 
-    def on_q_key_press(self, event):
+    def on_q_key_press(self, _event):
         """Handle 'q' key press - play synthesizer note"""
         try:
             self.log_output("🎵 Playing note (Q key pressed)...")
-            
+
             # Get audio data from synthesizer
             audio_data = self.synth.render_instrument_note(self.current_instrument, 64)
-            
+
             if audio_data is not None and len(audio_data) > 0:
                 # Play the audio if audio system is available
                 if self.audio and self.audio.is_initialized:
@@ -191,8 +198,8 @@ class Editor:
                     self.log_output("✗ Audio system not available")
             else:
                 self.log_output("✗ No audio data generated")
-                
-        except Exception as e:
+
+        except (RuntimeError, ValueError, OSError) as e:
             self.logger.error("Error playing note: %s", e)
             self.log_output(f"✗ Error playing note: {e}")
 
@@ -203,10 +210,10 @@ class Editor:
             if self.audio:
                 self.audio.cleanup()
                 self.log_output("✓ Audio cleanup completed")
-            
+
             # Close the window
             self.root.destroy()
-        except Exception as e:
+        except (RuntimeError, tk.TclError) as e:
             self.logger.error("Error during cleanup: %s", e)
             self.root.destroy()
 
@@ -260,50 +267,80 @@ class Editor:
         instrument_frame.columnconfigure(1, weight=1)
 
     def _create_instrument_controllers(self, parent_frame):
-        """Create instrument control sliders"""
+        """Create instrument control sliders with value fields"""
+        # Configure grid columns
+        parent_frame.columnconfigure(1, weight=2)  # Slider column
+        parent_frame.columnconfigure(2, weight=0)  # Value field column
+
         # Attack
-        ttk.Label(parent_frame, text="Attack:").grid(row=2, column=0,
-                                                   sticky=tk.W)
+        ttk.Label(parent_frame, text="Attack:").grid(row=2, column=0, sticky=tk.W)
         self.attack_var = tk.DoubleVar(value=0.1)
         attack_scale = ttk.Scale(parent_frame, from_=0.0, to=1.0,
-                               variable=self.attack_var, orient=tk.HORIZONTAL)
-        attack_scale.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(5, 0))
-        attack_scale.bind('<Motion>', self.on_adsr_change)
+                               variable=self.attack_var, orient=tk.HORIZONTAL,
+                               command=self.on_attack_slider_change)
+        attack_scale.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
+
+        self.attack_entry = ttk.Entry(parent_frame, width=8, justify=tk.CENTER)
+        self.attack_entry.grid(row=2, column=2, sticky=tk.W, padx=(0, 5))
+        self.attack_entry.insert(0, "0.10")
+        self.attack_entry.bind('<Return>', self.on_attack_entry_change)
+        self.attack_entry.bind('<FocusOut>', self.on_attack_entry_change)
 
         # Decay
-        ttk.Label(parent_frame, text="Decay:").grid(row=3, column=0,
-                                                  sticky=tk.W)
+        ttk.Label(parent_frame, text="Decay:").grid(row=3, column=0, sticky=tk.W)
         self.decay_var = tk.DoubleVar(value=0.2)
         decay_scale = ttk.Scale(parent_frame, from_=0.0, to=1.0,
-                              variable=self.decay_var, orient=tk.HORIZONTAL)
-        decay_scale.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(5, 0))
-        decay_scale.bind('<Motion>', self.on_adsr_change)
+                              variable=self.decay_var, orient=tk.HORIZONTAL,
+                              command=self.on_decay_slider_change)
+        decay_scale.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
+
+        self.decay_entry = ttk.Entry(parent_frame, width=8, justify=tk.CENTER)
+        self.decay_entry.grid(row=3, column=2, sticky=tk.W, padx=(0, 5))
+        self.decay_entry.insert(0, "0.20")
+        self.decay_entry.bind('<Return>', self.on_decay_entry_change)
+        self.decay_entry.bind('<FocusOut>', self.on_decay_entry_change)
 
         # Sustain
-        ttk.Label(parent_frame, text="Sustain:").grid(row=4, column=0,
-                                                    sticky=tk.W)
+        ttk.Label(parent_frame, text="Sustain:").grid(row=4, column=0, sticky=tk.W)
         self.sustain_var = tk.DoubleVar(value=0.7)
         sustain_scale = ttk.Scale(parent_frame, from_=0.0, to=1.0,
-                                variable=self.sustain_var, orient=tk.HORIZONTAL)
-        sustain_scale.grid(row=4, column=1, sticky=(tk.W, tk.E), padx=(5, 0))
-        sustain_scale.bind('<Motion>', self.on_adsr_change)
+                                variable=self.sustain_var, orient=tk.HORIZONTAL,
+                                command=self.on_sustain_slider_change)
+        sustain_scale.grid(row=4, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
+
+        self.sustain_entry = ttk.Entry(parent_frame, width=8, justify=tk.CENTER)
+        self.sustain_entry.grid(row=4, column=2, sticky=tk.W, padx=(0, 5))
+        self.sustain_entry.insert(0, "0.70")
+        self.sustain_entry.bind('<Return>', self.on_sustain_entry_change)
+        self.sustain_entry.bind('<FocusOut>', self.on_sustain_entry_change)
 
         # Release
-        ttk.Label(parent_frame, text="Release:").grid(row=5, column=0,
-                                                    sticky=tk.W)
+        ttk.Label(parent_frame, text="Release:").grid(row=5, column=0, sticky=tk.W)
         self.release_var = tk.DoubleVar(value=0.5)
         release_scale = ttk.Scale(parent_frame, from_=0.0, to=1.0,
-                                variable=self.release_var, orient=tk.HORIZONTAL)
-        release_scale.grid(row=5, column=1, sticky=(tk.W, tk.E), padx=(5, 0))
-        release_scale.bind('<Motion>', self.on_adsr_change)
+                                variable=self.release_var, orient=tk.HORIZONTAL,
+                                command=self.on_release_slider_change)
+        release_scale.grid(row=5, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
+
+        self.release_entry = ttk.Entry(parent_frame, width=8, justify=tk.CENTER)
+        self.release_entry.grid(row=5, column=2, sticky=tk.W, padx=(0, 5))
+        self.release_entry.insert(0, "0.50")
+        self.release_entry.bind('<Return>', self.on_release_entry_change)
+        self.release_entry.bind('<FocusOut>', self.on_release_entry_change)
 
         # Gain
         ttk.Label(parent_frame, text="Gain:").grid(row=6, column=0, sticky=tk.W)
         self.gain_var = tk.DoubleVar(value=0.8)
         gain_scale = ttk.Scale(parent_frame, from_=0.0, to=1.0,
-                             variable=self.gain_var, orient=tk.HORIZONTAL)
-        gain_scale.grid(row=6, column=1, sticky=(tk.W, tk.E), padx=(5, 0))
-        gain_scale.bind('<Motion>', self.on_adsr_change)
+                             variable=self.gain_var, orient=tk.HORIZONTAL,
+                             command=self.on_gain_slider_change)
+        gain_scale.grid(row=6, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
+
+        self.gain_entry = ttk.Entry(parent_frame, width=8, justify=tk.CENTER)
+        self.gain_entry.grid(row=6, column=2, sticky=tk.W, padx=(0, 5))
+        self.gain_entry.insert(0, "0.80")
+        self.gain_entry.bind('<Return>', self.on_gain_entry_change)
+        self.gain_entry.bind('<FocusOut>', self.on_gain_entry_change)
     def _create_visualization_section(self, main_frame):
         """Create visualization section"""
         viz_frame = ttk.LabelFrame(main_frame, text="Instrument Visualization",
@@ -352,9 +389,105 @@ class Editor:
             self.log_output(f"Selected {selection}")
             self.update_synth_parameters()
 
-    def on_adsr_change(self, _event):
-        """Handle ADSR parameter changes"""
+    def on_attack_slider_change(self, value):
+        """Handle attack slider changes"""
+        self.attack_entry.delete(0, tk.END)
+        self.attack_entry.insert(0, f"{float(value):.2f}")
         self.update_synth_parameters()
+
+    def on_attack_entry_change(self, _event):
+        """Handle attack entry field changes"""
+        try:
+            value = float(self.attack_entry.get())
+            value = max(0.0, min(1.0, value))  # Clamp to valid range
+            self.attack_var.set(value)
+            self.attack_entry.delete(0, tk.END)
+            self.attack_entry.insert(0, f"{value:.2f}")
+            self.update_synth_parameters()
+        except ValueError:
+            # Reset to current slider value if invalid input
+            self.attack_entry.delete(0, tk.END)
+            self.attack_entry.insert(0, f"{self.attack_var.get():.2f}")
+
+    def on_decay_slider_change(self, value):
+        """Handle decay slider changes"""
+        self.decay_entry.delete(0, tk.END)
+        self.decay_entry.insert(0, f"{float(value):.2f}")
+        self.update_synth_parameters()
+
+    def on_decay_entry_change(self, _event):
+        """Handle decay entry field changes"""
+        try:
+            value = float(self.decay_entry.get())
+            value = max(0.0, min(1.0, value))  # Clamp to valid range
+            self.decay_var.set(value)
+            self.decay_entry.delete(0, tk.END)
+            self.decay_entry.insert(0, f"{value:.2f}")
+            self.update_synth_parameters()
+        except ValueError:
+            # Reset to current slider value if invalid input
+            self.decay_entry.delete(0, tk.END)
+            self.decay_entry.insert(0, f"{self.decay_var.get():.2f}")
+
+    def on_sustain_slider_change(self, value):
+        """Handle sustain slider changes"""
+        self.sustain_entry.delete(0, tk.END)
+        self.sustain_entry.insert(0, f"{float(value):.2f}")
+        self.update_synth_parameters()
+
+    def on_sustain_entry_change(self, _event):
+        """Handle sustain entry field changes"""
+        try:
+            value = float(self.sustain_entry.get())
+            value = max(0.0, min(1.0, value))  # Clamp to valid range
+            self.sustain_var.set(value)
+            self.sustain_entry.delete(0, tk.END)
+            self.sustain_entry.insert(0, f"{value:.2f}")
+            self.update_synth_parameters()
+        except ValueError:
+            # Reset to current slider value if invalid input
+            self.sustain_entry.delete(0, tk.END)
+            self.sustain_entry.insert(0, f"{self.sustain_var.get():.2f}")
+
+    def on_release_slider_change(self, value):
+        """Handle release slider changes"""
+        self.release_entry.delete(0, tk.END)
+        self.release_entry.insert(0, f"{float(value):.2f}")
+        self.update_synth_parameters()
+
+    def on_release_entry_change(self, _event):
+        """Handle release entry field changes"""
+        try:
+            value = float(self.release_entry.get())
+            value = max(0.0, min(1.0, value))  # Clamp to valid range
+            self.release_var.set(value)
+            self.release_entry.delete(0, tk.END)
+            self.release_entry.insert(0, f"{value:.2f}")
+            self.update_synth_parameters()
+        except ValueError:
+            # Reset to current slider value if invalid input
+            self.release_entry.delete(0, tk.END)
+            self.release_entry.insert(0, f"{self.release_var.get():.2f}")
+
+    def on_gain_slider_change(self, value):
+        """Handle gain slider changes"""
+        self.gain_entry.delete(0, tk.END)
+        self.gain_entry.insert(0, f"{float(value):.2f}")
+        self.update_synth_parameters()
+
+    def on_gain_entry_change(self, _event):
+        """Handle gain entry field changes"""
+        try:
+            value = float(self.gain_entry.get())
+            value = max(0.0, min(1.0, value))  # Clamp to valid range
+            self.gain_var.set(value)
+            self.gain_entry.delete(0, tk.END)
+            self.gain_entry.insert(0, f"{value:.2f}")
+            self.update_synth_parameters()
+        except ValueError:
+            # Reset to current slider value if invalid input
+            self.gain_entry.delete(0, tk.END)
+            self.gain_entry.insert(0, f"{self.gain_var.get():.2f}")
 
     def update_synth_parameters(self):
         """Update synthesizer parameters based on UI controls"""
@@ -384,7 +517,7 @@ class Editor:
         self.play_button.config(text="Pause")
         self.status_var.set("Playing...")
         self.log_output("Playback started")
-        # FIXME: Implement actual continuous playback
+        # FIXME: Implement actual continuous playback  # pylint: disable=fixme
 
     def pause_playback(self):
         """Pause playback"""
