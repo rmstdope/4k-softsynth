@@ -22,7 +22,7 @@ CPPFLAGS="-g -O0 -DDEBUG" python setup.py build_ext --inplace --debug
 
 ```bash
 cd editor
-python tkinter_main.py
+python __main__.py
 ```
 
 You'll see debug output like:
@@ -48,7 +48,7 @@ CPPFLAGS="-g -O0 -DDEBUG" python setup.py build_ext --inplace --debug
 
 ### Step 2: Start Python Debugger
 
-1. Open `tkinter_main.py` in VS Code
+1. Open `__main__.py` in VS Code
 2. Set breakpoints in Python code before C++ calls
 3. Use "Debug Python + C++ (Tkinter)" configuration
 4. Start debugging (F5)
@@ -69,7 +69,7 @@ CPPFLAGS="-g -O0 -DDEBUG" python setup.py build_ext --inplace --debug
 cd editor
 
 # Start Python with debugger attached
-lldb -- python tkinter_main.py
+lldb -- python __main__.py
 
 # In LLDB:
 (lldb) process launch
@@ -86,7 +86,7 @@ lldb -- python tkinter_main.py
 cd editor
 
 # Start with GDB
-gdb --args python tkinter_main.py
+gdb --args python __main__.py
 
 # In GDB:
 (gdb) set environment PYTHONPATH=.

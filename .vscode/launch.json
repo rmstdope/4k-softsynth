@@ -2,10 +2,10 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "Debug Tkinter Editor",
+			"name": "Debug Main Editor",
 			"type": "debugpy",
 			"request": "launch",
-			"program": "${workspaceFolder}/editor/tkinter_main.py",
+			"program": "${workspaceFolder}/editor/__main__.py",
 			"console": "integratedTerminal",
 			"cwd": "${workspaceFolder}/editor",
 			"python": "${workspaceFolder}/.venv/bin/python",
@@ -16,41 +16,12 @@
 			"stopOnEntry": false,
 			"args": []
 		},
+
 		{
-			"name": "Debug CLI Editor",
+			"name": "Debug Python + C++ (Main)",
 			"type": "debugpy",
 			"request": "launch",
-			"program": "${workspaceFolder}/editor/cli_main.py",
-			"console": "integratedTerminal",
-			"cwd": "${workspaceFolder}/editor",
-			"python": "${workspaceFolder}/.venv/bin/python",
-			"env": {
-				"PYTHONPATH": "${workspaceFolder}/editor"
-			},
-			"justMyCode": false,
-			"stopOnEntry": false,
-			"args": []
-		},
-		{
-			"name": "Debug Editor Launcher",
-			"type": "debugpy",
-			"request": "launch",
-			"program": "${workspaceFolder}/editor/launch.py",
-			"console": "integratedTerminal",
-			"cwd": "${workspaceFolder}/editor",
-			"python": "${workspaceFolder}/.venv/bin/python",
-			"env": {
-				"PYTHONPATH": "${workspaceFolder}/editor"
-			},
-			"justMyCode": false,
-			"stopOnEntry": false,
-			"args": ["tkinter"]
-		},
-		{
-			"name": "Debug Python + C++ (Tkinter)",
-			"type": "debugpy",
-			"request": "launch",
-			"program": "${workspaceFolder}/editor/tkinter_main.py",
+			"program": "${workspaceFolder}/editor/__main__.py",
 			"console": "integratedTerminal",
 			"cwd": "${workspaceFolder}/editor",
 			"python": "${workspaceFolder}/.venv/bin/python",

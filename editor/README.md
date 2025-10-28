@@ -16,47 +16,27 @@ A Python-based editor for the 4K ARM64 softsynth with multiple GUI interfaces an
 # Build the project (includes ARM64 synthesis and Python bindings)
 ./build.sh
 
-# Launch with smart interface selection
-python launch.py
+# Launch the GUI
+python __main__.py
 
-# Or choose specific interface
-python launch.py tkinter    # Stable Tkinter GUI
-python launch.py cli        # Command-line interface
+# Or run as a module
+python -m editor
 ```
 
 ## Available Interfaces
 
-### 1. Tkinter GUI (Recommended)
+### 1. Main GUI (Recommended)
 
 ```bash
-python tkinter_main.py
+python __main__.py
+# Or run as module:
+python -m editor
 ```
 
 - **Native tkinter interface** - Most stable on all platforms
 - **Real-time ARM64 integration** - Direct synthesizer control
 - **ADSR parameter editing** - Visual sliders for envelope shaping
 - **Test functions** - Built-in ARM64 engine testing and audio generation
-
-### 2. Command-Line Interface
-
-```bash
-python cli_main.py
-```
-
-- **Full ARM64 functionality** - Complete synthesizer access without GUI
-- **Performance testing** - Benchmark ARM64 assembly performance
-- **Audio generation** - Create and export audio samples
-- **Debug output** - Detailed synthesizer information and constants
-
-### 3. Smart Launcher
-
-```bash
-python launch.py [interface]
-```
-
-- **Auto-detects** best available interface
-- **Interface options**: `tkinter`, `cli`
-- **Default preference**: tkinter → cli
 
 ## Requirements
 
@@ -120,13 +100,7 @@ synth.trigger_note(0, 69, 0.8)  # A4 note
 audio_data = synth.render_audio(44100)  # 1 second of stereo audio
 ```
 
-### Performance Testing
-
-```bash
-python cli_main.py
-# Choose option 4: Run Performance Test
-# Measures real-time factor (should be >1.0 for real-time capability)
-```
+````
 
 ### Parameter Experimentation
 
@@ -135,7 +109,7 @@ python tkinter_main.py
 # Use GUI sliders to adjust ADSR parameters in real-time
 # Click "Test ARM64 Engine" to verify synthesis
 # Click "Play A4 Note" to hear parameter changes
-```
+````
 
 ## Build System
 
@@ -152,10 +126,7 @@ cd editor && python setup.py build_ext --inplace  # Build Python extension
 
 ```
 editor/
-├── launch.py           # Smart launcher (recommended entry point)
-├── tkinter_main.py     # Tkinter GUI (stable)
-├── cli_main.py         # Command-line interface
-├── main.py             # Legacy PySimpleGUI interface (deprecated)
+├── __main__.py         # Main GUI application (entry point)
 ├── audio/
 │   └── synth_wrapper.py    # Python synthesizer interface
 ├── cpp/
@@ -192,8 +163,8 @@ See [DEBUGGING.md](DEBUGGING.md) for detailed debugging instructions.
 # If tkinter is missing:
 brew install python-tk
 
-# Use the stable interface:
-python launch.py tkinter
+# Use the GUI interface:
+python __main__.py
 ```
 
 ### Build Issues
@@ -209,11 +180,7 @@ cd softsynth && make && ./bin/test_softsynth
 
 ### Performance Issues
 
-```bash
-# Verify ARM64 engine status
-python cli_main.py  # Option 3: Show Synthesizer Info
-# Should show "Ready: True" and ARM64 constants
-```
+The GUI provides built-in ARM64 engine testing and performance monitoring.
 
 ## Development
 
@@ -221,7 +188,7 @@ python cli_main.py  # Option 3: Show Synthesizer Info
 
 1. Update `transformed_parameters` access in `synth_bindings.cpp`
 2. Add getter/setter methods in `SynthWrapper`
-3. Update GUI controls in `tkinter_main.py`
+3. Update GUI controls in `__main__.py`
 
 ### Testing ARM64 Functions
 

@@ -8,13 +8,12 @@ The following debug configurations are available in VS Code (accessible via F5 o
 
 ### 1. Debug Tkinter Editor
 
-- **Target**: `tkinter_main.py`
+- **Target**: `__main__.py`
 - **Purpose**: Debug the main Tkinter GUI application
 - **Use case**: GUI development, ARM64 integration testing, parameter control debugging
 
 ### 2. Debug CLI Editor
 
-- **Target**: `cli_main.py`
 - **Purpose**: Debug the command-line interface
 - **Use case**: ARM64 synthesizer testing, performance analysis, headless operation
 
@@ -55,7 +54,7 @@ The following debug configurations are available in VS Code (accessible via F5 o
 
 ### For GUI Issues (Tkinter)
 
-1. Set breakpoints in `tkinter_main.py`
+1. Set breakpoints in `__main__.py`
 2. Select "Debug Tkinter Editor" configuration
 3. Press F5 to start debugging
 4. GUI will launch in debug mode
@@ -77,7 +76,7 @@ The following debug configurations are available in VS Code (accessible via F5 o
 
 ## Useful Breakpoint Locations
 
-### Tkinter GUI (`tkinter_main.py`)
+### Main GUI (`__main__.py`)
 
 ```python
 # GUI initialization
@@ -108,8 +107,6 @@ def set_adsr(self, instrument: int, attack: float, decay: float, ...):
 # Note triggering
 def trigger_note(self, instrument: int, note: int, velocity: float = 1.0):
 ```
-
-### CLI Interface (`cli_main.py`)
 
 ```python
 # Synthesizer testing

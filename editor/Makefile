@@ -31,7 +31,7 @@ build-softsynth:
 # Run the editor
 run:
 	@echo "Starting 4K Softsynth Editor..."
-	./venv/bin/python main.py
+	./venv/bin/python __main__.py
 
 # Run tests
 test:
