@@ -60,7 +60,8 @@ class SynthWrapper:
         if self.engine and self.is_initialized:
             try:
                 # Get samples from ARM64 engine
-                samples = self.engine.render_instrument_note(instrument_num, note_num)
+                # samples = self.engine.render_instrument_note(instrument_num, note_num)
+                samples = self.engine.render_instrument_note(1, note_num)
                 return np.array(samples, dtype=np.float32)
             except (AttributeError, RuntimeError, ValueError) as e:
                 print(f"ARM64 render error: {e}")

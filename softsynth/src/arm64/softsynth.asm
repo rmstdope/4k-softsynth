@@ -159,10 +159,14 @@ debug_set_instrument_pointers_loop:
     b.ne    4f
     add     x4, x4, #1
 4:
-    cmp     w13, #INSTRUMENT_END
+    cmp     w13, #OPERATION_ID
     b.ne    5f
-    add     x3, x3, #1
+    add     x4, x4, #1
 5:
+    cmp     w13, #INSTRUMENT_END
+    b.ne    6f
+    add     x3, x3, #1
+6:
     b       debug_set_instrument_pointers_loop
 debug_set_instrument_pointers_end:
     ret
@@ -575,7 +579,7 @@ _oscillator_function:
     // s0 = transpose value [-128..128] + detune value [-1..1]
     ldr         s1, [x9, #OSCILLATOR_PARAM_DETUNE]
     fsub        s1, s1, s31
-    fadd        s0, s1, s1
+    fadd        s0, s0, s1
     ldr         s2, [x7, #OSCILLATOR_WS_DETUNE_MOD]
     fadd        s0, s0, s2
     tst         w17, #OSCILLATOR_LFO
@@ -652,12 +656,12 @@ _oscillator_function:
     ret
 
 // Input: s0 = phase, s1 = color
-// Output: s1 ≈ cos(2*pi*phase/color)
+// Output: s0 ≈ cos(2*pi*phase/color)
 // Uses: s2, s3, s4, s5, s6,
 cosine_waveform:
-    // If color > phase, output 0.0
+    // If color < phase, output 0.0
     fcmp    s0, s1
-    b.ge    .do_cosine
+    b.le    .do_cosine
     fmov    s0, #0.0
     ret
 .do_cosine:
@@ -708,11 +712,11 @@ cosine_waveform:
     fmul s7, s2, s4             // s7 = 0.5*x^2
     fsub s6, s6, s7             // s6 = 1 - 0.5*x^2
     fmul s7, s3, s5             // s7 = 0.0416666*x^4
-    fadd s1, s6, s7             // s1 = 1 - 0.5*x^2 + 0.0416666*x^4
+    fadd s0, s6, s7             // s1 = 1 - 0.5*x^2 + 0.0416666*x^4
 
     // Flip sign if needed
     cbz w11, 4f
-    fneg s1, s1
+    fneg s0, s0
 4:
     ret
 

@@ -78,7 +78,7 @@ public:
 
     std::vector<float> render_instrument_note(uint32_t instrument_num, uint32_t note_num)
     {
-        int num_samples = SAMPLES_PER_NOTE * 3;
+        int num_samples = SAMPLES_PER_NOTE * 4;
         DEBUG_LOG("render_instrument_note called");
         std::vector<float> output(num_samples); // Mono output
         if (!initialized_)
@@ -92,13 +92,13 @@ public:
         DEBUG_LOG("Render samples for instrument " << instrument_num);
         for (int i = 0; i < num_samples; i++)
         {
-            if (i >= SAMPLES_PER_NOTE * 2)
+            if (i >= SAMPLES_PER_NOTE * 3)
                 debug_next_instrument_sample(instrument_num, &output[i], 1);
             else
                 debug_next_instrument_sample(instrument_num, &output[i], 0);
-            DEBUG_LOG("GM is " << ((float *)synth_data)[3 + 2]);
-            if (i > 200)
-                break;
+            // DEBUG_LOG("Sample " << i << ": " << std::fixed << std::setprecision(6) << output[i]);
+            // if (i == 200)
+            //     break;
         }
         // Trim trailing zero samples (allow tiny floating error)
         while (!output.empty() && std::fabs(output.back()) <= 1e-8f)

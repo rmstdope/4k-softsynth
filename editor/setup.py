@@ -13,44 +13,59 @@ from pathlib import Path
 
 class CustomBuildExt(build_ext):
     """Custom build extension that rebuilds ARM64 objects when assembly files change"""
-    
+
     def run(self):
         # Check if we need to rebuild ARM64 objects
         self.build_arm64_objects()
         super().run()
-    
+
+    def build_extensions(self):
+        """Override to add debug flags when needed"""
+        # Check if we're building with debug flags
+        if "--debug" in sys.argv or os.environ.get("DEBUG_BUILD"):
+            print("🔧 Building with debug symbols...")
+            for ext in self.extensions:
+                # Add debug flags
+                ext.extra_compile_args = getattr(ext, 'extra_compile_args', []) + [
+                    '-g', '-O0', '-DDEBUG', '-fno-omit-frame-pointer'
+                ]
+                ext.extra_link_args = getattr(ext, 'extra_link_args', []) + [
+                    '-g'
+                ]
+        super().build_extensions()
+
     def build_arm64_objects(self):
         """Build ARM64 assembly objects if source files are newer"""
         softsynth_dir = Path("../softsynth")
-        
+
         # Assembly source files
         asm_sources = [
             softsynth_dir / "src/arm64/softsynth.asm",
-            softsynth_dir / "src/arm64/song.asm", 
+            softsynth_dir / "src/arm64/song.asm",
             softsynth_dir / "src/arm64/common.asm",
         ]
-        
+
         # Object files
         obj_files = [
             softsynth_dir / "bin/softsynth.o",
             softsynth_dir / "bin/song.o",
         ]
-        
+
         # Check if any assembly file is newer than object files
         need_rebuild = False
-        
+
         for obj_file in obj_files:
             if not obj_file.exists():
                 need_rebuild = True
                 break
-                
+
         if not need_rebuild:
             obj_time = min(os.path.getmtime(obj) for obj in obj_files if obj.exists())
             for asm_file in asm_sources:
                 if asm_file.exists() and os.path.getmtime(asm_file) > obj_time:
                     need_rebuild = True
                     break
-        
+
         if need_rebuild:
             print("🔧 Assembly files changed, rebuilding ARM64 objects...")
             try:
@@ -85,7 +100,7 @@ ext_modules = [
         include_dirs=[
             # Path to pybind11 headers
             pybind11.get_include(),
-            # Path to softsynth headers  
+            # Path to softsynth headers
             "../softsynth/include",
             "../softsynth/src/arm64",
             # System paths

@@ -21,10 +21,11 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # pylint: disable=import-error,wrong-import-position
 from audio.synth_wrapper import SynthWrapper
+from audio.audio_device import Audio
 from utils.logger import setup_logger
 
 # pylint: disable=too-many-instance-attributes,too-many-public-methods
-class TkinterEditor:
+class Editor:
     """Simple Tkinter-based editor for the synthesizer"""
 
     def __init__(self):
@@ -32,6 +33,7 @@ class TkinterEditor:
         self.logger = setup_logger()
         self.synth = None
         self.root = None
+        self.audio = None
 
         # UI state
         self.playing = False
@@ -110,12 +112,26 @@ class TkinterEditor:
         self._create_output_section(main_frame)
         self._create_status_bar(main_frame)
 
+        # Initialize audio
+        self._initialize_audio()
+
+        # Set up keyboard bindings
+        self._setup_keyboard_bindings()
+
+        # Set up window close handler
+        self.root.protocol("WM_DELETE_WINDOW", self.on_window_close)
+
         # Initial output
         self.log_output("4K Softsynth Editor - Tkinter Version")
         if self.synth.is_ready():
             self.log_output("✓ ARM64 Synthesizer initialized and ready")
         else:
             self.log_output("⚠ Running in simulation mode")
+        
+        # Add helpful instructions
+        self.log_output("💡 Press 'Q' key to play a synthesizer note!")
+        if self.audio and self.audio.is_initialized:
+            self.log_output("🔊 Audio system ready for playback")
 
     def _configure_grid_weights(self, main_frame):
         """Configure grid weights for responsive layout"""
@@ -123,6 +139,76 @@ class TkinterEditor:
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=1)
         main_frame.rowconfigure(3, weight=1)
+
+    def _initialize_audio(self):
+        """Initialize the audio system"""
+        try:
+            self.audio = Audio(sample_rate=44100)
+            if self.audio.is_initialized:
+                device_info = self.audio.get_device_info()
+                self.log_output(f"✓ Audio initialized: {device_info['device_name']}")
+            else:
+                self.log_output("⚠ Audio initialization failed, running in silent mode")
+        except Exception as e:
+            self.logger.error("Audio initialization error: %s", e)
+            self.log_output(f"⚠ Audio error: {e}")
+            self.audio = None
+
+    def _setup_keyboard_bindings(self):
+        """Set up keyboard event bindings"""
+        # Make sure the window can receive focus and key events
+        self.root.focus_set()
+        
+        # Bind key press events
+        self.root.bind('<Key>', self.on_key_press)
+        self.root.bind('<KeyPress-q>', self.on_q_key_press)
+        
+        # Make sure the window is focusable
+        self.root.focus_force()
+
+    def on_key_press(self, event):
+        """Handle general key press events"""
+        # You can add other key handlers here if needed
+        pass
+
+    def on_q_key_press(self, event):
+        """Handle 'q' key press - play synthesizer note"""
+        try:
+            self.log_output("🎵 Playing note (Q key pressed)...")
+            
+            # Get audio data from synthesizer
+            audio_data = self.synth.render_instrument_note(self.current_instrument, 64)
+            
+            if audio_data is not None and len(audio_data) > 0:
+                # Play the audio if audio system is available
+                if self.audio and self.audio.is_initialized:
+                    success = self.audio.play_samples(audio_data, blocking=False)
+                    if success:
+                        self.log_output(f"✓ Playing {len(audio_data)} samples")
+                    else:
+                        self.log_output("✗ Audio playback failed")
+                else:
+                    self.log_output("✗ Audio system not available")
+            else:
+                self.log_output("✗ No audio data generated")
+                
+        except Exception as e:
+            self.logger.error("Error playing note: %s", e)
+            self.log_output(f"✗ Error playing note: {e}")
+
+    def on_window_close(self):
+        """Handle window close event - cleanup resources"""
+        try:
+            # Cleanup audio
+            if self.audio:
+                self.audio.cleanup()
+                self.log_output("✓ Audio cleanup completed")
+            
+            # Close the window
+            self.root.destroy()
+        except Exception as e:
+            self.logger.error("Error during cleanup: %s", e)
+            self.root.destroy()
 
     def _create_transport_controls(self, main_frame):
         """Create transport control section"""
@@ -166,15 +252,15 @@ class TkinterEditor:
                             padx=(5, 0))
         instrument_combo.bind('<<ComboboxSelected>>', self.on_instrument_change)
 
-        # ADSR controls
-        ttk.Label(instrument_frame, text="ADSR Envelope:").grid(
+        # Instrument controls
+        ttk.Label(instrument_frame, text="Instrument controls:").grid(
             row=1, column=0, columnspan=2, sticky=tk.W, pady=(10, 5))
 
-        self._create_adsr_controls(instrument_frame)
+        self._create_instrument_controllers(instrument_frame)
         instrument_frame.columnconfigure(1, weight=1)
 
-    def _create_adsr_controls(self, parent_frame):
-        """Create ADSR control sliders"""
+    def _create_instrument_controllers(self, parent_frame):
+        """Create instrument control sliders"""
         # Attack
         ttk.Label(parent_frame, text="Attack:").grid(row=2, column=0,
                                                    sticky=tk.W)
@@ -604,7 +690,7 @@ class TkinterEditor:
 
         try:
             # Get audio data from synthesizer
-            audio_data = self.synth.render_instrument_note(0, 64)
+            audio_data = self.synth.render_instrument_note(self.current_instrument, 64)
 
             if audio_data is not None and len(audio_data) > 0:
                 self._update_waveform_plot(audio_data)
@@ -669,7 +755,7 @@ class TkinterEditor:
 
 def main():
     """Main entry point"""
-    app = TkinterEditor()
+    app = Editor()
     return app.run()
 
 if __name__ == "__main__":

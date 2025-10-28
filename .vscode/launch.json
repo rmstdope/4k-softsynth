@@ -83,12 +83,20 @@
 					"text": "settings set target.inline-breakpoint-strategy always"
 				},
 				{
-					"description": "Load debug symbols",
+					"description": "Enable verbose symbol loading",
+					"text": "settings set symbols.enable-external-lookup true"
+				},
+				{
+					"description": "Load debug symbols and wait for extension",
 					"text": "image list"
 				},
 				{
 					"description": "Set symbol search paths",
 					"text": "settings set target.exec-search-paths ${workspaceFolder}/editor:${workspaceFolder}/softsynth/bin"
+				},
+				{
+					"description": "Wait for synth_engine module load",
+					"text": "breakpoint set --name dlopen --auto-continue true --one-shot true"
 				}
 			],
 			"symbolLoadInfo": {
