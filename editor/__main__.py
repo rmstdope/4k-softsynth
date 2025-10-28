@@ -25,18 +25,95 @@ from audio.audio_device import Audio
 from utils.logger import setup_logger
 
 # pylint: disable=too-many-instance-attributes,too-many-public-methods
+class ParameterControl:
+    """A reusable slider-value pair control for parameters"""
+
+    def __init__(self, parent, name, initial_value, row, *, update_callback=None):
+        """Initialize a parameter control
+
+        Args:
+            parent: Parent tkinter widget
+            name: Display name for the parameter
+            initial_value: Initial value for the parameter
+            row: Grid row for placement
+            update_callback: Function to call when value changes
+        """
+        self.name = name
+        self.min_val = 0.0
+        self.max_val = 1.0
+        self.update_callback = update_callback
+
+        # Create the control widgets
+        self._create_widgets(parent, row, initial_value)
+
+    def _create_widgets(self, parent, row, initial_value):
+        """Create the label, slider, and entry widgets"""
+        # Label
+        ttk.Label(parent, text=f"{self.name}:").grid(row=row, column=0, sticky=tk.W)
+
+        # Variable for the slider
+        self.var = tk.DoubleVar(value=initial_value)
+
+        # Slider
+        self.scale = ttk.Scale(parent, from_=self.min_val, to=self.max_val,
+                              variable=self.var, orient=tk.HORIZONTAL,
+                              command=self._on_slider_change)
+        self.scale.grid(row=row, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
+
+        # Entry field
+        self.entry = ttk.Entry(parent, width=8, justify=tk.CENTER)
+        self.entry.grid(row=row, column=2, sticky=tk.W, padx=(0, 5))
+        self.entry.insert(0, f"{initial_value:.2f}")
+        self.entry.bind('<Return>', self._on_entry_change)
+        self.entry.bind('<FocusOut>', self._on_entry_change)
+
+    def _on_slider_change(self, value):
+        """Handle slider changes"""
+        self.entry.delete(0, tk.END)
+        self.entry.insert(0, f"{float(value):.2f}")
+        if self.update_callback:
+            self.update_callback()
+
+    def _on_entry_change(self, _event):
+        """Handle entry field changes"""
+        try:
+            value = float(self.entry.get())
+            value = max(self.min_val, min(self.max_val, value))  # Clamp to valid range
+            self.var.set(value)
+            self.entry.delete(0, tk.END)
+            self.entry.insert(0, f"{value:.2f}")
+            if self.update_callback:
+                self.update_callback()
+        except ValueError:
+            # Reset to current slider value if invalid input
+            self.entry.delete(0, tk.END)
+            self.entry.insert(0, f"{self.var.get():.2f}")
+
+    def get_value(self):
+        """Get the current parameter value"""
+        return self.var.get()
+
+    def set_value(self, value):
+        """Set the parameter value programmatically"""
+        value = max(self.min_val, min(self.max_val, value))
+        self.var.set(value)
+        self.entry.delete(0, tk.END)
+        self.entry.insert(0, f"{value:.2f}")
+
+
 class Editor:
     """Simple Tkinter-based editor for the synthesizer"""
 
     def __init__(self):
-        """Initialize the Tkinter editor"""
-        self.logger = setup_logger()
-        self.synth = None
+        """Initialize the editor"""
         self.root = None
+        self.synth = None
         self.audio = None
+        self.logger = setup_logger()
 
-        # UI state
-        self.playing = False
+        # Track playing state
+        self.is_playing = False
+        self.playing = False  # For backward compatibility
         self.current_instrument = 0
 
         # Waveform visualization
@@ -48,20 +125,11 @@ class Editor:
         self.play_button = None
         self.tempo_var = None
         self.instrument_var = None
-        self.attack_var = None
-        self.decay_var = None
-        self.sustain_var = None
-        self.release_var = None
-        self.gain_var = None
         self.output_text = None
         self.status_var = None
 
-        # ADSR entry fields - initialized to None, will be set in _create_instrument_controllers
-        self.attack_entry = None
-        self.decay_entry = None
-        self.sustain_entry = None
-        self.release_entry = None
-        self.gain_entry = None
+        # ADSR parameter controls - set up in _create_instrument_controllers
+        self.adsr_controls = {}
 
     def initialize_synth(self):
         """Initialize the synthesizer"""
@@ -267,80 +335,76 @@ class Editor:
         instrument_frame.columnconfigure(1, weight=1)
 
     def _create_instrument_controllers(self, parent_frame):
-        """Create instrument control sliders with value fields"""
-        # Configure grid columns
-        parent_frame.columnconfigure(1, weight=2)  # Slider column
-        parent_frame.columnconfigure(2, weight=0)  # Value field column
+        """Create instrument control sliders with value fields in a scrollable frame"""
+        # Create a scrollable frame for ADSR controls
+        container_frame, scrollable_frame = self._create_scrollable_frame(parent_frame)
+        container_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S),
+                           pady=(5, 0))
 
-        # Attack
-        ttk.Label(parent_frame, text="Attack:").grid(row=2, column=0, sticky=tk.W)
-        self.attack_var = tk.DoubleVar(value=0.1)
-        attack_scale = ttk.Scale(parent_frame, from_=0.0, to=1.0,
-                               variable=self.attack_var, orient=tk.HORIZONTAL,
-                               command=self.on_attack_slider_change)
-        attack_scale.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
+        # Configure parent frame to expand the scrollable area
+        parent_frame.rowconfigure(2, weight=1)
 
-        self.attack_entry = ttk.Entry(parent_frame, width=8, justify=tk.CENTER)
-        self.attack_entry.grid(row=2, column=2, sticky=tk.W, padx=(0, 5))
-        self.attack_entry.insert(0, "0.10")
-        self.attack_entry.bind('<Return>', self.on_attack_entry_change)
-        self.attack_entry.bind('<FocusOut>', self.on_attack_entry_change)
+        # ADSR parameter definitions
+        adsr_params = [
+            ("Attack", 0.1),
+            ("Decay", 0.2),
+            ("Sustain", 0.7),
+            ("Release", 0.5),
+            ("Gain", 0.8)
+        ]
 
-        # Decay
-        ttk.Label(parent_frame, text="Decay:").grid(row=3, column=0, sticky=tk.W)
-        self.decay_var = tk.DoubleVar(value=0.2)
-        decay_scale = ttk.Scale(parent_frame, from_=0.0, to=1.0,
-                              variable=self.decay_var, orient=tk.HORIZONTAL,
-                              command=self.on_decay_slider_change)
-        decay_scale.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
+        # Create ADSR controls using the ParameterControl class
+        for i, (name, default_value) in enumerate(adsr_params):
+            control = ParameterControl(
+                parent=scrollable_frame,
+                name=name,
+                initial_value=default_value,
+                row=i,  # Start from row 0 in the scrollable frame
+                update_callback=self._on_parameter_change
+            )
+            self.adsr_controls[name.lower()] = control
 
-        self.decay_entry = ttk.Entry(parent_frame, width=8, justify=tk.CENTER)
-        self.decay_entry.grid(row=3, column=2, sticky=tk.W, padx=(0, 5))
-        self.decay_entry.insert(0, "0.20")
-        self.decay_entry.bind('<Return>', self.on_decay_entry_change)
-        self.decay_entry.bind('<FocusOut>', self.on_decay_entry_change)
+    def _create_scrollable_frame(self, parent):
+        """Create a scrollable frame with canvas and scrollbar"""
+        # Create main container frame
+        container_frame = ttk.Frame(parent)
 
-        # Sustain
-        ttk.Label(parent_frame, text="Sustain:").grid(row=4, column=0, sticky=tk.W)
-        self.sustain_var = tk.DoubleVar(value=0.7)
-        sustain_scale = ttk.Scale(parent_frame, from_=0.0, to=1.0,
-                                variable=self.sustain_var, orient=tk.HORIZONTAL,
-                                command=self.on_sustain_slider_change)
-        sustain_scale.grid(row=4, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
+        # Create canvas and scrollbar
+        canvas = tk.Canvas(container_frame, height=150, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(container_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
 
-        self.sustain_entry = ttk.Entry(parent_frame, width=8, justify=tk.CENTER)
-        self.sustain_entry.grid(row=4, column=2, sticky=tk.W, padx=(0, 5))
-        self.sustain_entry.insert(0, "0.70")
-        self.sustain_entry.bind('<Return>', self.on_sustain_entry_change)
-        self.sustain_entry.bind('<FocusOut>', self.on_sustain_entry_change)
+        # Configure scrolling
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
 
-        # Release
-        ttk.Label(parent_frame, text="Release:").grid(row=5, column=0, sticky=tk.W)
-        self.release_var = tk.DoubleVar(value=0.5)
-        release_scale = ttk.Scale(parent_frame, from_=0.0, to=1.0,
-                                variable=self.release_var, orient=tk.HORIZONTAL,
-                                command=self.on_release_slider_change)
-        release_scale.grid(row=5, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
+        # Create window in canvas
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
 
-        self.release_entry = ttk.Entry(parent_frame, width=8, justify=tk.CENTER)
-        self.release_entry.grid(row=5, column=2, sticky=tk.W, padx=(0, 5))
-        self.release_entry.insert(0, "0.50")
-        self.release_entry.bind('<Return>', self.on_release_entry_change)
-        self.release_entry.bind('<FocusOut>', self.on_release_entry_change)
+        # Configure grid columns for ADSR controls
+        scrollable_frame.columnconfigure(1, weight=2)  # Slider column
+        scrollable_frame.columnconfigure(2, weight=0)  # Value field column
 
-        # Gain
-        ttk.Label(parent_frame, text="Gain:").grid(row=6, column=0, sticky=tk.W)
-        self.gain_var = tk.DoubleVar(value=0.8)
-        gain_scale = ttk.Scale(parent_frame, from_=0.0, to=1.0,
-                             variable=self.gain_var, orient=tk.HORIZONTAL,
-                             command=self.on_gain_slider_change)
-        gain_scale.grid(row=6, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
+        # Pack canvas and scrollbar
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
-        self.gain_entry = ttk.Entry(parent_frame, width=8, justify=tk.CENTER)
-        self.gain_entry.grid(row=6, column=2, sticky=tk.W, padx=(0, 5))
-        self.gain_entry.insert(0, "0.80")
-        self.gain_entry.bind('<Return>', self.on_gain_entry_change)
-        self.gain_entry.bind('<FocusOut>', self.on_gain_entry_change)
+        # Bind mousewheel to canvas for better UX
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+        canvas.bind("<MouseWheel>", _on_mousewheel)  # Windows/Mac
+        canvas.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # Linux
+        canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))   # Linux
+
+        # Store references for later access if needed
+        container_frame.scrollable_frame = scrollable_frame
+        container_frame.canvas = canvas
+
+        return container_frame, scrollable_frame
     def _create_visualization_section(self, main_frame):
         """Create visualization section"""
         viz_frame = ttk.LabelFrame(main_frame, text="Instrument Visualization",
@@ -389,105 +453,39 @@ class Editor:
             self.log_output(f"Selected {selection}")
             self.update_synth_parameters()
 
-    def on_attack_slider_change(self, value):
-        """Handle attack slider changes"""
-        self.attack_entry.delete(0, tk.END)
-        self.attack_entry.insert(0, f"{float(value):.2f}")
+    def _on_parameter_change(self):
+        """Handle parameter changes from ADSR controls"""
+        # Get all current parameter values
+        params = {name: control.get_value()
+                 for name, control in self.adsr_controls.items()}
+
+        self.logger.debug("ADSR parameters changed: %s", params)
         self.update_synth_parameters()
 
-    def on_attack_entry_change(self, _event):
-        """Handle attack entry field changes"""
-        try:
-            value = float(self.attack_entry.get())
-            value = max(0.0, min(1.0, value))  # Clamp to valid range
-            self.attack_var.set(value)
-            self.attack_entry.delete(0, tk.END)
-            self.attack_entry.insert(0, f"{value:.2f}")
-            self.update_synth_parameters()
-        except ValueError:
-            # Reset to current slider value if invalid input
-            self.attack_entry.delete(0, tk.END)
-            self.attack_entry.insert(0, f"{self.attack_var.get():.2f}")
+    def get_parameter_value(self, param_name):
+        """Get the value of a specific ADSR parameter
+        
+        Args:
+            param_name: Name of the parameter ('attack', 'decay', 'sustain', 'release', 'gain')
+        
+        Returns:
+            float: Parameter value (0.0 to 1.0) or None if parameter doesn't exist
+        """
+        control = self.adsr_controls.get(param_name.lower())
+        return control.get_value() if control else None
 
-    def on_decay_slider_change(self, value):
-        """Handle decay slider changes"""
-        self.decay_entry.delete(0, tk.END)
-        self.decay_entry.insert(0, f"{float(value):.2f}")
-        self.update_synth_parameters()
+    def set_parameter_value(self, param_name, value):
+        """Set the value of a specific ADSR parameter
+        
+        Args:
+            param_name: Name of the parameter ('attack', 'decay', 'sustain', 'release', 'gain')
+            value: New value (0.0 to 1.0)
+        """
+        control = self.adsr_controls.get(param_name.lower())
+        if control:
+            control.set_value(value)
 
-    def on_decay_entry_change(self, _event):
-        """Handle decay entry field changes"""
-        try:
-            value = float(self.decay_entry.get())
-            value = max(0.0, min(1.0, value))  # Clamp to valid range
-            self.decay_var.set(value)
-            self.decay_entry.delete(0, tk.END)
-            self.decay_entry.insert(0, f"{value:.2f}")
-            self.update_synth_parameters()
-        except ValueError:
-            # Reset to current slider value if invalid input
-            self.decay_entry.delete(0, tk.END)
-            self.decay_entry.insert(0, f"{self.decay_var.get():.2f}")
 
-    def on_sustain_slider_change(self, value):
-        """Handle sustain slider changes"""
-        self.sustain_entry.delete(0, tk.END)
-        self.sustain_entry.insert(0, f"{float(value):.2f}")
-        self.update_synth_parameters()
-
-    def on_sustain_entry_change(self, _event):
-        """Handle sustain entry field changes"""
-        try:
-            value = float(self.sustain_entry.get())
-            value = max(0.0, min(1.0, value))  # Clamp to valid range
-            self.sustain_var.set(value)
-            self.sustain_entry.delete(0, tk.END)
-            self.sustain_entry.insert(0, f"{value:.2f}")
-            self.update_synth_parameters()
-        except ValueError:
-            # Reset to current slider value if invalid input
-            self.sustain_entry.delete(0, tk.END)
-            self.sustain_entry.insert(0, f"{self.sustain_var.get():.2f}")
-
-    def on_release_slider_change(self, value):
-        """Handle release slider changes"""
-        self.release_entry.delete(0, tk.END)
-        self.release_entry.insert(0, f"{float(value):.2f}")
-        self.update_synth_parameters()
-
-    def on_release_entry_change(self, _event):
-        """Handle release entry field changes"""
-        try:
-            value = float(self.release_entry.get())
-            value = max(0.0, min(1.0, value))  # Clamp to valid range
-            self.release_var.set(value)
-            self.release_entry.delete(0, tk.END)
-            self.release_entry.insert(0, f"{value:.2f}")
-            self.update_synth_parameters()
-        except ValueError:
-            # Reset to current slider value if invalid input
-            self.release_entry.delete(0, tk.END)
-            self.release_entry.insert(0, f"{self.release_var.get():.2f}")
-
-    def on_gain_slider_change(self, value):
-        """Handle gain slider changes"""
-        self.gain_entry.delete(0, tk.END)
-        self.gain_entry.insert(0, f"{float(value):.2f}")
-        self.update_synth_parameters()
-
-    def on_gain_entry_change(self, _event):
-        """Handle gain entry field changes"""
-        try:
-            value = float(self.gain_entry.get())
-            value = max(0.0, min(1.0, value))  # Clamp to valid range
-            self.gain_var.set(value)
-            self.gain_entry.delete(0, tk.END)
-            self.gain_entry.insert(0, f"{value:.2f}")
-            self.update_synth_parameters()
-        except ValueError:
-            # Reset to current slider value if invalid input
-            self.gain_entry.delete(0, tk.END)
-            self.gain_entry.insert(0, f"{self.gain_var.get():.2f}")
 
     def update_synth_parameters(self):
         """Update synthesizer parameters based on UI controls"""

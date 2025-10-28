@@ -25,6 +25,8 @@ extern "C"
     void debug_start_instrument_note(uint8_t instrument, uint8_t note);
     void debug_next_instrument_sample(uint8_t instrument, float *sample, uint8_t release);
     extern uint32_t synth_data[];
+    extern uint8_t instrument_instructions[];
+    extern uint8_t instrument_parameters[];
 #endif // DEBUG
 
 #ifdef __cplusplus
