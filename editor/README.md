@@ -162,8 +162,27 @@ editor/
 │   └── synth_bindings.cpp  # C++ bindings to ARM64 assembly
 ├── gui/                    # PySimpleGUI modules
 ├── utils/                  # Logging and utilities
+├── DEBUGGING.md            # Debugging guide for VS Code
 └── build.sh               # Automated build script
 ```
+
+## Debugging
+
+The project includes comprehensive VS Code debugging support:
+
+```bash
+# Open in VS Code and use F5 to debug
+code /Users/henrikku/repos/4k-softsynth
+
+# Available debug configurations:
+# - Debug Tkinter Editor    (GUI debugging)
+# - Debug CLI Editor        (Command-line debugging)
+# - Debug Editor Launcher   (Smart launcher debugging)
+# - Debug softsynth         (C++ ARM64 debugging)
+# - Debug test_softsynth    (ARM64 unit tests)
+```
+
+See [DEBUGGING.md](DEBUGGING.md) for detailed debugging instructions.
 
 ## Troubleshooting
 

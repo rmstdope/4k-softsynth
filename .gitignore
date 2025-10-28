@@ -19,6 +19,7 @@ packages
 
 # Log files
 *.log
+logs/
 
 # Compiled binary object and library files
 bin/

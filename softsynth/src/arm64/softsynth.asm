@@ -38,6 +38,8 @@
 #define envelope_function _envelope_function
 .global _storeval_function
 #define storeval_function _storeval_function
+.global _operation_function
+#define operation_function _operation_function
 .global _oscillator_function
 #define oscillator_function _oscillator_function
 .global _output_function
@@ -50,6 +52,12 @@
 #define instrument_instructions_lookup _instrument_instructions_lookup
 .global _new_instrument_note
 #define new_instrument_note _new_instrument_note
+.global _debug_start_instrument_note
+#define debug_start_instrument_note _debug_start_instrument_note
+.global _debug_next_instrument_sample
+#define debug_next_instrument_sample _debug_next_instrument_sample
+.global _synth_data
+#define synth_data _synth_data
 
 // Song data
 .extern _instrument_instructions
@@ -62,6 +70,104 @@
 #define pattern_array _pattern_array
 
 .text
+
+#ifdef DEBUG
+/// Start a note on a specific instrument
+///
+/// Arguments:
+///   instrument_num in x0
+///   note_num in x1
+debug_start_instrument_note:
+    // x5 = instrument data
+    LOAD_ADDR   x10, synth_data
+    mov         x3, #instrument_length
+    mul         x4, x0, x3
+    add         x5, x10, x4
+    mov         x14, x5
+    mov         x16, #MAX_COMMANDS * MAX_COMMAND_PARAMS / 4
+1:
+    stp         xzr, xzr, [x14], #16
+    subs        x16, x16, #1
+    bne         1b
+    // final 12 bytes
+    str         xzr, [x14], #8
+    str         wzr, [x14], #4
+    // Set note value
+    str         w1, [x5, #instrument_note]
+    ret
+
+/// Start a note on a specific instrument
+///
+/// Arguments:
+///   instrument_num in x0
+///   pointer to output buffer in x1
+///   whatever should be in RELEASE in x2
+debug_next_instrument_sample:
+    PUSH_LINK_REGISTER
+    // Constants
+    fmov        s31, #0.5
+    ldr         s30, inv_128_const
+    ldr         s29, inv_12_const
+    fmov        s28, #1.0
+    ldr         s27, pi2_const
+    fmov        s26, #-1.0    
+    ///     x4 = current instrument parameters pointer
+    ///     x6 = instrument instructions pointer
+    bl          debug_set_instrument_pointers
+    ///     x10 = synth data pointer
+    LOAD_ADDR   x10, synth_data
+    ///     x5 = instrument data pointer
+    mov         x3, #instrument_length
+    mul         x3, x0, x3
+    add         x5, x10, x3
+    /// Set release
+    strb        w2, [x5, #instrument_release]
+    ///     x8 = VM stack data pointer
+    LOAD_ADDR   x8, vm_stack_data
+    bl          render_instrument
+    ldr         s0, [x5, #instrument_output]
+    str         s0, [x1], #4
+    POP_LINK_REGISTER
+    ret
+
+///
+/// Set instruction and parameter pointers to the correct instrument
+debug_set_instrument_pointers:
+    // Instrument #
+    mov         x3, #0
+    // Start values
+    LOAD_ADDR   x6, instrument_instructions
+    LOAD_ADDR   x4, instrument_parameters
+debug_set_instrument_pointers_loop:
+    cmp     x3, x0
+    b.eq    debug_set_instrument_pointers_end
+    ldrb    w13, [x6], #1
+    // ENVELOPE?
+    cmp     w13, #ENVELOPE_ID
+    b.ne    1f
+    add     x4, x4, #5
+1:
+    cmp     w13, #OSCILLATOR_ID
+    b.ne    2f
+    add     x4, x4, #8
+2:
+    cmp     w13, #STOREVAL_ID
+    b.ne    3f
+    add     x4, x4, #3
+3:
+    cmp     w13, #OUTPUT_ID
+    b.ne    4f
+    add     x4, x4, #1
+4:
+    cmp     w13, #INSTRUMENT_END
+    b.ne    5f
+    add     x3, x3, #1
+5:
+    b       debug_set_instrument_pointers_loop
+debug_set_instrument_pointers_end:
+    ret
+
+#endif // DEBUG
 
 ///
 /// Entry point for rendering the synth
@@ -278,7 +384,7 @@ envelope_function:
     b           envelope_done
 envelope_is_active:
     // Are we in release mode?
-    ldr         w17, [x5, #4]
+    ldr         w17, [x5, #instrument_release]
     cbz         w17, envelope_process
     // Not in release mode
     mov         w17, #ENV_STATE_RELEASE
@@ -520,6 +626,22 @@ _oscillator_function:
     b.eq        .not_sine
     bl          cosine_waveform
 .not_sine:
+    tst         w17, #OSCILLATOR_NOISE
+    b.eq        .not_noise
+    // Simple white noise
+    // seed = seed * 16007
+    LOAD_ADDR   x11, rand_seed
+    ldr         w13, [x11]
+    mov         w12, #16007
+    mul         w13, w13, w12
+    str         w13, [x11]
+    // // s0 = (float)seed / (float)c_RandDiv
+    scvtf       s0, w13
+    LOAD_ADDR   x12, rand_div
+    ldr         s1, [x12]
+    fdiv        s0, s0, s1
+    // fmov            s0, #0.75
+.not_noise:
     // TODO Implement more waveforms
     ldr         s1, [x9, #OSCILLATOR_PARAM_GAIN]
     ldr         s2, [x7, #OSCILLATOR_WS_GAIN_MOD]
@@ -641,6 +763,34 @@ storeval_function:
     // Store result
     str         s1, [x5, w16, uxtw #0]
     POP_LINK_REGISTER
+    ret
+
+///
+/// Operation function
+///
+/// Input registers:
+///     x0 = current note #
+///     x2 = current sample #
+///     x3 = current instrument #
+///     x4 = current instrument parameters pointer
+///     x5 = instrument data pointer
+///     x6 = instrument instructions pointer
+///     x7 = instrument instruction workspace pointer
+///     x8 = VM stack data pointer
+///     x9 = transformed instrument instruction parameters pointer
+///     x10 = synth data pointer
+/// Destroyed registers:
+operation_function:
+    ldr         x17, [x4], #1
+    cmp         x17, #OPERATOR_MULP
+    b.eq        .not_mulp
+    // Multiplication + pop
+    ldr         s1, [x8, #-8]
+    ldr         s2, [x8, #-4]
+    fmul        s1, s1, s2
+    str         s1, [x8, #-8]
+    sub         x8, x8, #4
+.not_mulp:
     ret
 
 ///
@@ -770,11 +920,14 @@ instrument_instructions_lookup:
                     .quad envelope_function
                     .quad oscillator_function
                     .quad storeval_function
-                    .quad 0 // operation_function (not implemented)
+                    .quad operation_function
                     .quad 0 // filter_function (not implemented)
                     .quad 0 // panning_function (not implemented)
                     .quad output_function
                     .quad accumulate_function
+
+rand_seed:          .word 1
+rand_div:           .float 2147483648.0
 
 .bss
 

@@ -29,7 +29,7 @@ def setup_logger(name: str = "synth_editor", level: int = logging.INFO) -> loggi
     
     # File handler
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_handler = logging.FileHandler(f"synth_editor_{timestamp}.log")
+    file_handler = logging.FileHandler(f"logs/synth_editor_{timestamp}.log")
     file_handler.setLevel(logging.DEBUG)
     
     # Formatter

@@ -3,14 +3,21 @@
 #include "../../include/softsynth.h"
 #include <string.h>
 
+#define INSTRUMENT_NOTE_OFFSET 0
+#define INSTRUMENT_RELEASE_OFFSET 1
+#define INSTRUMENT_OUTPUT_OFFSET 2
+#define INSTRUMENT_WS_OFFSET 3
+
 #define INSTRUMENT_SIZE (3 + MAX_COMMANDS * MAX_COMMAND_PARAMS)
 #define SYNTH_SIZE INSTRUMENT_SIZE *MAX_NUM_INSTRUMENTS
 
-uint8_t instrument_instructions[4] = {ENVELOPE_ID, OSCILLATOR_ID, OSCILLATOR_ID, INSTRUMENT_END};
-uint8_t instrument_parameters[16] =
+uint8_t instrument_instructions[6] = {ENVELOPE_ID, OSCILLATOR_ID, OUTPUT_ID, INSTRUMENT_END, ENVELOPE_ID, INSTRUMENT_END};
+uint8_t instrument_parameters[19] =
     {
         72, 96, 96, 88, 128,
-        0, 32, 64, 64, 128};
+        0, 32, 64, 64, 128, 32, 32, 32,
+        64,
+        72, 96, 96, 88, 128};
 uint8_t instrument_patterns[PATTERNS_PER_INSTRUMENT * MAX_NUM_INSTRUMENTS] =
     {
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1,
@@ -89,8 +96,8 @@ void setup_envelope_function(uint32_t current_note, bool is_released = false, un
     instruction_params[3] = release;
     instruction_params[4] = gain;
     memset(instrument_data, 0, sizeof(instrument_data));
-    instrument_data[0] = current_note;        // Current note
-    instrument_data[1] = is_released ? 1 : 0; // Release (1 if true, 0 if false)
+    instrument_data[INSTRUMENT_NOTE_OFFSET] = current_note;           // Current note
+    instrument_data[INSTRUMENT_RELEASE_OFFSET] = is_released ? 1 : 0; // Release (1 if true, 0 if false)
 }
 
 void run_envelope_function()
@@ -108,7 +115,7 @@ void run_envelope_function()
         "mov     x7, %2\n"
         "mov     x8, %3\n"
         :
-        : "r"(instruction_params), "r"(instrument_data), "r"(&instrument_data[3]), "r"(vm_stack)
+        : "r"(instruction_params), "r"(instrument_data), "r"(&instrument_data[INSTRUMENT_WS_OFFSET]), "r"(vm_stack)
         : "x4", "x5", "x7", "x8");
     envelope_function();
     asm volatile("mov %0, x8" : "=r"(x8_ptr));
@@ -153,17 +160,17 @@ void test_envelope_function_gain(void)
 
     // Now test with GAIN_MOD
     setup_envelope_function(1, false, 0, 0, 128, 0, 128);
-    ((float *)instrument_data)[5] = 1.0f; // GAIN_MOD
+    ((float *)instrument_data)[INSTRUMENT_WS_OFFSET + 2] = 1.0f; // GAIN_MOD
     run_envelope_function();
     TEST_ASSERT_EQUAL_FLOAT(2.0f, vm_stack[0]);
 
     setup_envelope_function(1, false, 0, 0, 128, 0, 64);
-    ((float *)instrument_data)[5] = 1.0f; // GAIN_MOD
+    ((float *)instrument_data)[INSTRUMENT_WS_OFFSET + 2] = 1.0f; // GAIN_MOD
     run_envelope_function();
     TEST_ASSERT_EQUAL_FLOAT(1.5f, vm_stack[0]);
 
     setup_envelope_function(1, false, 0, 0, 128, 0, 32);
-    ((float *)instrument_data)[5] = 0.25f; // GAIN_MOD
+    ((float *)instrument_data)[INSTRUMENT_WS_OFFSET + 2] = 0.25f; // GAIN_MOD
     run_envelope_function();
     TEST_ASSERT_EQUAL_FLOAT(0.5f, vm_stack[0]);
 }
@@ -178,21 +185,21 @@ void test_envelope_function_adsr_run(void)
     while (val < 1.0f)
     {
         // State should still be attack
-        TEST_ASSERT_EQUAL_UINT32(0, instrument_data[3]);
+        TEST_ASSERT_EQUAL_UINT32(0, instrument_data[INSTRUMENT_WS_OFFSET]);
         run_envelope_function();
         val = fmin(val + k, 1.0f);
         TEST_ASSERT_EQUAL_FLOAT(val, vm_stack[0]);
     }
     /// DECAY
     // State should now be decay
-    TEST_ASSERT_EQUAL_UINT32(1, instrument_data[3]);
+    TEST_ASSERT_EQUAL_UINT32(1, instrument_data[INSTRUMENT_WS_OFFSET]);
     run_envelope_function();
     k = 1.f - vm_stack[0];
     val = vm_stack[0];
     while (val > 0.5f)
     {
         // State should still be decay
-        TEST_ASSERT_EQUAL_UINT32(1, instrument_data[3]);
+        TEST_ASSERT_EQUAL_UINT32(1, instrument_data[INSTRUMENT_WS_OFFSET]);
         run_envelope_function();
         val = fmax(val - k, 0.5f);
         TEST_ASSERT_EQUAL_FLOAT(val, vm_stack[0]);
@@ -201,19 +208,19 @@ void test_envelope_function_adsr_run(void)
     for (int i = 0; i < 10; i++)
     {
         // State should now be sustain
-        TEST_ASSERT_EQUAL_UINT32(2, instrument_data[3]);
+        TEST_ASSERT_EQUAL_UINT32(2, instrument_data[INSTRUMENT_WS_OFFSET]);
         run_envelope_function();
         TEST_ASSERT_EQUAL_FLOAT(val, vm_stack[0]);
     }
     /// RELEASE
-    instrument_data[1] = 1;
+    instrument_data[INSTRUMENT_RELEASE_OFFSET] = 1;
     run_envelope_function();
     k = 0.5f - vm_stack[0];
     val = vm_stack[0];
     while (val > 0.0f)
     {
         // State should still be release
-        TEST_ASSERT_EQUAL_UINT32(3, instrument_data[3]);
+        TEST_ASSERT_EQUAL_UINT32(3, instrument_data[INSTRUMENT_WS_OFFSET]);
         run_envelope_function();
         val = fmax(val - k, 0.0f);
         TEST_ASSERT_EQUAL_FLOAT(val, vm_stack[0]);
@@ -222,7 +229,7 @@ void test_envelope_function_adsr_run(void)
     for (int i = 0; i < 10; i++)
     {
         // State should still be invalid
-        TEST_ASSERT_EQUAL_UINT32(4, instrument_data[3]);
+        TEST_ASSERT_EQUAL_UINT32(4, instrument_data[INSTRUMENT_WS_OFFSET]);
         run_envelope_function();
         TEST_ASSERT_EQUAL_FLOAT(val, vm_stack[0]);
     }
@@ -337,9 +344,9 @@ void test_process_stack(void)
     process_stack();
     TEST_ASSERT_EQUAL_UINT8(3, inum);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(instructions, icallers, 3);
-    TEST_ASSERT_EQUAL_PTR(&instrument_data[3 + 16 * 0], iargs[0]);
-    TEST_ASSERT_EQUAL_PTR(&instrument_data[3 + 16 * 1], iargs[1]);
-    TEST_ASSERT_EQUAL_PTR(&instrument_data[3 + 16 * 2], iargs[2]);
+    TEST_ASSERT_EQUAL_PTR(&instrument_data[INSTRUMENT_WS_OFFSET + 16 * 0], iargs[0]);
+    TEST_ASSERT_EQUAL_PTR(&instrument_data[INSTRUMENT_WS_OFFSET + 16 * 1], iargs[1]);
+    TEST_ASSERT_EQUAL_PTR(&instrument_data[INSTRUMENT_WS_OFFSET + 16 * 2], iargs[2]);
 }
 
 void reset_instrument_data(unsigned char val)
@@ -366,13 +373,13 @@ void run_new_instrument_note(uint32_t instrument_num, uint32_t note_num, uint32_
             TEST_ASSERT_EQUAL_UINT32(expected_note, instrument_data[i * INSTRUMENT_SIZE]);
             if (release)
             {
-                TEST_ASSERT_NOT_EQUAL_UINT32(0, instrument_data[i * INSTRUMENT_SIZE + 1]);
+                TEST_ASSERT_NOT_EQUAL_UINT32(0, instrument_data[i * INSTRUMENT_SIZE + INSTRUMENT_RELEASE_OFFSET]);
             }
             else
             {
-                TEST_ASSERT_EQUAL_UINT32(0, instrument_data[i * INSTRUMENT_SIZE + 1]);
+                TEST_ASSERT_EQUAL_UINT32(0, instrument_data[i * INSTRUMENT_SIZE + INSTRUMENT_RELEASE_OFFSET]);
             }
-            TEST_ASSERT_EACH_EQUAL_UINT32(0, &instrument_data[i * INSTRUMENT_SIZE + 2], INSTRUMENT_SIZE - 2);
+            TEST_ASSERT_EACH_EQUAL_UINT32(0, &instrument_data[i * INSTRUMENT_SIZE + INSTRUMENT_OUTPUT_OFFSET], INSTRUMENT_SIZE - 2);
         }
         else
         {
@@ -432,7 +439,7 @@ void run_storeval(uint8_t amount, uint16_t addr, float stack_value, float dest_v
         "mov     x7, %2\n"
         "mov     x8, %3\n"
         :
-        : "r"(instruction_params), "r"(instrument_data), "r"(&instrument_data[3]), "r"(&vm_stack[1])
+        : "r"(instruction_params), "r"(instrument_data), "r"(&instrument_data[INSTRUMENT_WS_OFFSET]), "r"(&vm_stack[1])
         : "x4", "x5", "x7", "x8");
     storeval_function();
     asm volatile("mov %0, x8" : "=r"(x8_ptr));
@@ -476,7 +483,7 @@ void run_output_function(float stack_value, unsigned char gain, float gain_modul
         "mov     x7, %2\n"
         "mov     x8, %3\n"
         :
-        : "r"(instruction_params), "r"(instrument_data), "r"(&instrument_data[3]), "r"(&vm_stack[1])
+        : "r"(instruction_params), "r"(instrument_data), "r"(&instrument_data[INSTRUMENT_WS_OFFSET]), "r"(&vm_stack[1])
         : "x4", "x5", "x7", "x8");
     output_function();
     asm volatile("mov %0, x8" : "=r"(x8_ptr));
@@ -485,15 +492,15 @@ void test_output_function(void)
 {
     run_output_function(0.5f, 32, 0.25f); // 0.5 * (0.25 + 0.25) = 0.25
     TEST_ASSERT_EQUAL_PTR(&vm_stack[0], x8_ptr);
-    TEST_ASSERT_EQUAL_FLOAT(0.25f, ((float *)(&instrument_data[2]))[0]);
+    TEST_ASSERT_EQUAL_FLOAT(0.25f, ((float *)(&instrument_data[INSTRUMENT_OUTPUT_OFFSET]))[0]);
 
     run_output_function(1.0f, 128, 1.0f); // 1.0 * (1.0 + 1.0) = 2.0
     TEST_ASSERT_EQUAL_PTR(&vm_stack[0], x8_ptr);
-    TEST_ASSERT_EQUAL_FLOAT(2.0f, ((float *)(&instrument_data[2]))[0]);
+    TEST_ASSERT_EQUAL_FLOAT(2.0f, ((float *)(&instrument_data[INSTRUMENT_OUTPUT_OFFSET]))[0]);
 
     run_output_function(0.1f, 64, 0.2f); // 0.1 * (0.5 + 0.2) = 0.07
     TEST_ASSERT_EQUAL_PTR(&vm_stack[0], x8_ptr);
-    TEST_ASSERT_EQUAL_FLOAT(0.07f, ((float *)(&instrument_data[2]))[0]);
+    TEST_ASSERT_EQUAL_FLOAT(0.07f, ((float *)(&instrument_data[INSTRUMENT_OUTPUT_OFFSET]))[0]);
 }
 
 void test_accumulate_function(void)
@@ -502,7 +509,7 @@ void test_accumulate_function(void)
     for (int i = 0; i < MAX_NUM_INSTRUMENTS; i++)
     {
         // Set up instrument data
-        ((float *)(&instrument_data[i * INSTRUMENT_SIZE + 2]))[0] = (float)(i + 1); // Output value
+        ((float *)(&instrument_data[i * INSTRUMENT_SIZE + INSTRUMENT_OUTPUT_OFFSET]))[0] = (float)(i + 1); // Output value
         sum += (float)(i + 1);
     }
     // Set up registers
@@ -518,9 +525,21 @@ void test_accumulate_function(void)
     TEST_ASSERT_EQUAL_FLOAT(sum, vm_stack[0]);
 }
 
+void test_debug_instrument_output(void)
+{
+    float output;
+
+    debug_start_instrument_note(0, 32);
+    TEST_ASSERT_EQUAL_UINT32(32, synth_data[INSTRUMENT_NOTE_OFFSET]);
+    TEST_ASSERT_EQUAL_UINT32(0, synth_data[INSTRUMENT_RELEASE_OFFSET]);
+
+    debug_next_instrument_sample(0, &output);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_debug_instrument_output);
     RUN_TEST(test_transform_values);
     RUN_TEST(test_envelope_function_no_note);
     RUN_TEST(test_envelope_function_attack_starts);

@@ -10,6 +10,27 @@
                 "isDefault": true
             },
             "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "build-debug-extension",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python",
+            "args": [
+                "setup.py", 
+                "build_ext", 
+                "--inplace", 
+                "--debug"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/editor",
+                "env": {
+                    "CPPFLAGS": "-g -O0 -DDEBUG",
+                    "CFLAGS": "-g -O0 -DDEBUG"
+                }
+            },
+            "group": "build",
+            "problemMatcher": ["$gcc"],
+            "dependsOn": "make"
         }
     ]
 }

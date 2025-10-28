@@ -2,6 +2,167 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "Debug Tkinter Editor",
+			"type": "debugpy",
+			"request": "launch",
+			"program": "${workspaceFolder}/editor/tkinter_main.py",
+			"console": "integratedTerminal",
+			"cwd": "${workspaceFolder}/editor",
+			"python": "${workspaceFolder}/.venv/bin/python",
+			"env": {
+				"PYTHONPATH": "${workspaceFolder}/editor"
+			},
+			"justMyCode": false,
+			"stopOnEntry": false,
+			"args": []
+		},
+		{
+			"name": "Debug CLI Editor",
+			"type": "debugpy",
+			"request": "launch",
+			"program": "${workspaceFolder}/editor/cli_main.py",
+			"console": "integratedTerminal",
+			"cwd": "${workspaceFolder}/editor",
+			"python": "${workspaceFolder}/.venv/bin/python",
+			"env": {
+				"PYTHONPATH": "${workspaceFolder}/editor"
+			},
+			"justMyCode": false,
+			"stopOnEntry": false,
+			"args": []
+		},
+		{
+			"name": "Debug Editor Launcher",
+			"type": "debugpy",
+			"request": "launch",
+			"program": "${workspaceFolder}/editor/launch.py",
+			"console": "integratedTerminal",
+			"cwd": "${workspaceFolder}/editor",
+			"python": "${workspaceFolder}/.venv/bin/python",
+			"env": {
+				"PYTHONPATH": "${workspaceFolder}/editor"
+			},
+			"justMyCode": false,
+			"stopOnEntry": false,
+			"args": ["tkinter"]
+		},
+		{
+			"name": "Debug Python + C++ (Tkinter)",
+			"type": "debugpy",
+			"request": "launch",
+			"program": "${workspaceFolder}/editor/tkinter_main.py",
+			"console": "integratedTerminal",
+			"cwd": "${workspaceFolder}/editor",
+			"python": "${workspaceFolder}/.venv/bin/python",
+			"env": {
+				"PYTHONPATH": "${workspaceFolder}/editor"
+			},
+			"justMyCode": false,
+			"stopOnEntry": false,
+			"args": [],
+			"subProcess": true,
+			"preLaunchTask": "build-debug-extension"
+		},
+		{
+			"name": "Attach C++ to Process",
+			"type": "cppdbg",
+			"request": "attach",
+			"program": "${workspaceFolder}/.venv/bin/python",
+			"processId": "${command:pickProcess}",
+			"MIMode": "lldb",
+			"sourceFileMap": {
+				"${workspaceFolder}/editor/cpp": "${workspaceFolder}/editor/cpp",
+				"${workspaceFolder}/softsynth/src": "${workspaceFolder}/softsynth/src",
+				"${workspaceFolder}/softsynth/include": "${workspaceFolder}/softsynth/include"
+			},
+			"setupCommands": [
+				{
+					"description": "Enable pretty-printing for gdb",
+					"text": "settings set target.inline-breakpoint-strategy always"
+				},
+				{
+					"description": "Load debug symbols for Python extension",
+					"text": "image list"
+				},
+				{
+					"description": "Set symbol search paths",
+					"text": "settings set target.exec-search-paths ${workspaceFolder}/editor:${workspaceFolder}/softsynth/bin"
+				}
+			],
+			"symbolLoadInfo": {
+				"loadAll": true,
+				"exceptionList": ""
+			}
+		},
+		{
+			"name": "Attach C++ by PID", 
+			"type": "cppdbg",
+			"request": "attach",
+			"program": "${workspaceFolder}/.venv/bin/python",
+			"processId": "${input:processPid}",
+			"MIMode": "lldb",
+			"sourceFileMap": {
+				"${workspaceFolder}/editor/cpp": "${workspaceFolder}/editor/cpp",
+				"${workspaceFolder}/softsynth/src": "${workspaceFolder}/softsynth/src",
+				"${workspaceFolder}/softsynth/include": "${workspaceFolder}/softsynth/include"
+			},
+			"setupCommands": [
+				{
+					"description": "Enable assembly debugging",
+					"text": "settings set target.inline-breakpoint-strategy always"
+				},
+				{
+					"description": "Load debug symbols",
+					"text": "image list"
+				},
+				{
+					"description": "Set symbol search paths",
+					"text": "settings set target.exec-search-paths ${workspaceFolder}/editor:${workspaceFolder}/softsynth/bin"
+				}
+			],
+			"symbolLoadInfo": {
+				"loadAll": true,
+				"exceptionList": ""
+			}
+		},
+		{
+			"name": "Debug Python Extension (C++)",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/.venv/bin/python",
+			"args": ["-c", "import synth_engine; engine = synth_engine.SynthEngine(); engine.initialize(); print('Extension loaded successfully')"],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/editor",
+			"environment": [
+				{
+					"name": "PYTHONPATH",
+					"value": "${workspaceFolder}/editor"
+				}
+			],
+			"externalConsole": false,
+			"MIMode": "lldb",
+			"preLaunchTask": "build-debug-extension",
+			"sourceFileMap": {
+				"${workspaceFolder}/editor/cpp": "${workspaceFolder}/editor/cpp",
+				"${workspaceFolder}/softsynth/src": "${workspaceFolder}/softsynth/src",
+				"${workspaceFolder}/softsynth/include": "${workspaceFolder}/softsynth/include"
+			},
+			"setupCommands": [
+				{
+					"description": "Enable assembly debugging",
+					"text": "settings set target.inline-breakpoint-strategy always"
+				},
+				{
+					"description": "Load all debug symbols",
+					"text": "image list"
+				}
+			],
+			"symbolLoadInfo": {
+				"loadAll": true,
+				"exceptionList": ""
+			}
+		},
+		{
 			"name": "Debug softsynth",
 			"type": "cppdbg",
 			"request": "launch",
@@ -45,6 +206,14 @@
 					"text": "settings set target.inline-breakpoint-strategy always"
 				}
 			]
+		}
+	],
+	"inputs": [
+		{
+			"id": "processPid",
+			"description": "Enter the Process ID (PID) to attach to",
+			"default": "",
+			"type": "promptString"
 		}
 	]
 }

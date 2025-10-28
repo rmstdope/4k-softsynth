@@ -9,6 +9,10 @@ from tkinter import ttk, messagebox
 import numpy as np
 import sys
 import os
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib
+matplotlib.use('TkAgg')
 
 # Add the current directory to the Python path for imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -29,6 +33,11 @@ class TkinterEditor:
         self.playing = False
         self.current_instrument = 0
         
+        # Waveform visualization
+        self.waveform_fig = None
+        self.waveform_ax = None
+        self.waveform_canvas = None
+        
     def initialize_synth(self):
         """Initialize the synthesizer"""
         try:
@@ -43,7 +52,7 @@ class TkinterEditor:
         """Create the main application window"""
         self.root = tk.Tk()
         self.root.title("4K Softsynth Editor")
-        self.root.geometry("800x600")
+        self.root.geometry("1200x900")
         
         # Create menu bar
         menubar = tk.Menu(self.root)
@@ -74,7 +83,7 @@ class TkinterEditor:
         main_frame.rowconfigure(3, weight=1)
         
         # Transport controls
-        transport_frame = ttk.LabelFrame(main_frame, text="Transport", padding="5")
+        transport_frame = ttk.LabelFrame(main_frame, text="Song Controls", padding="5")
         transport_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
         
         self.play_button = ttk.Button(transport_frame, text="Play", command=self.toggle_play)
@@ -139,14 +148,14 @@ class TkinterEditor:
         
         instrument_frame.columnconfigure(1, weight=1)
         
-        # Test controls
-        test_frame = ttk.LabelFrame(main_frame, text="Test & Demo", padding="5")
-        test_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(10, 0), pady=(0, 10))
+        # Instrument Visualization
+        viz_frame = ttk.LabelFrame(main_frame, text="Instrument Visualization", padding="5")
+        viz_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(10, 0), pady=(0, 10))
+        viz_frame.columnconfigure(0, weight=1)
+        viz_frame.rowconfigure(0, weight=1)
         
-        ttk.Button(test_frame, text="Test ARM64 Engine", command=self.test_arm64_engine).pack(fill=tk.X, pady=(0, 5))
-        ttk.Button(test_frame, text="Play A4 Note", command=self.play_test_note).pack(fill=tk.X, pady=(0, 5))
-        ttk.Button(test_frame, text="Generate Sample", command=self.generate_sample).pack(fill=tk.X, pady=(0, 5))
-        ttk.Button(test_frame, text="Performance Test", command=self.run_performance_test).pack(fill=tk.X, pady=(0, 5))
+        # Waveform display
+        self.setup_waveform_display(viz_frame)
         
         # Output text area
         output_frame = ttk.LabelFrame(main_frame, text="Output", padding="5")
@@ -194,16 +203,13 @@ class TkinterEditor:
         """Update synthesizer parameters based on UI controls"""
         if self.synth:
             try:
-                # Set ADSR parameters
-                self.synth.set_adsr(
-                    self.current_instrument,
-                    self.attack_var.get(),
-                    self.decay_var.get(),
-                    self.sustain_var.get(),
-                    self.release_var.get(),
-                    self.gain_var.get()
-                )
-                self.status_var.set(f"Updated ADSR for instrument {self.current_instrument}")
+                # Note: ADSR parameters are not yet implemented in the ARM64 engine
+                # For now, just update the waveform display
+                self.status_var.set(f"Updated parameters for instrument {self.current_instrument}")
+                
+                # Auto-refresh the waveform display
+                self.auto_update_waveform()
+                
             except Exception as e:
                 self.log_output(f"Error updating parameters: {e}")
     
@@ -240,18 +246,120 @@ class TkinterEditor:
         """Test the ARM64 engine"""
         self.log_output("Testing ARM64 Synthesizer...")
         try:
-            # Generate 1 second of audio
-            num_samples = self.synth.get_sample_rate()
-            audio_data = self.synth.render_audio(num_samples)
+            # Generate audio using render_note
+            audio_data = self.synth.render_note()
             
-            if audio_data is not None:
-                self.log_output(f"✓ Generated {len(audio_data)} samples (stereo)")
+            if audio_data is not None and len(audio_data) > 0:
+                self.log_output(f"✓ Generated {len(audio_data)} samples")
                 self.log_output(f"  Sample range: {np.min(audio_data):.3f} to {np.max(audio_data):.3f}")
                 self.log_output(f"  RMS level: {np.sqrt(np.mean(audio_data**2)):.3f}")
+                
+                # Open modal window with graph
+                self.show_audio_graph(audio_data)
             else:
                 self.log_output("✗ Failed to generate audio")
         except Exception as e:
             self.log_output(f"✗ ARM64 test failed: {e}")
+    
+    def show_audio_graph(self, audio_data):
+        """Show audio waveform in a modal window"""
+        try:
+            import matplotlib.pyplot as plt
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+            import matplotlib
+            matplotlib.use('TkAgg')
+            
+            # Create modal window
+            graph_window = tk.Toplevel(self.root)
+            graph_window.title("ARM64 Engine Audio Output")
+            graph_window.geometry("1200x900")
+            graph_window.transient(self.root)
+            graph_window.grab_set()  # Make it modal
+            
+            # Center the window
+            graph_window.update_idletasks()
+            x = (graph_window.winfo_screenwidth() // 2) - (1200 // 2)
+            y = (graph_window.winfo_screenheight() // 2) - (900 // 2)
+            graph_window.geometry(f"1200x900+{x}+{y}")
+            
+            # Create matplotlib figure
+            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
+            fig.suptitle('ARM64 Synthesizer Output Analysis', fontsize=14)
+            
+            # Plot waveform
+            time_axis = np.arange(len(audio_data)) / 44100.0  # Assuming 44.1kHz
+            ax1.plot(time_axis, audio_data, 'b-', linewidth=0.8)
+            ax1.set_title('Waveform')
+            ax1.set_xlabel('Time (seconds)')
+            ax1.set_ylabel('Amplitude')
+            ax1.grid(True, alpha=0.3)
+            ax1.set_ylim([-1.1, 1.1])
+            
+            # Plot frequency spectrum (FFT)
+            if len(audio_data) > 1:
+                fft_data = np.fft.fft(audio_data[:min(len(audio_data), 4096)])
+                freqs = np.fft.fftfreq(len(fft_data), 1/44100.0)
+                magnitude = np.abs(fft_data)
+                
+                # Only plot positive frequencies
+                positive_freqs = freqs[:len(freqs)//2]
+                positive_magnitude = magnitude[:len(magnitude)//2]
+                
+                ax2.semilogy(positive_freqs, positive_magnitude, 'r-', linewidth=0.8)
+                ax2.set_title('Frequency Spectrum (First 4096 samples)')
+                ax2.set_xlabel('Frequency (Hz)')
+                ax2.set_ylabel('Magnitude (log scale)')
+                ax2.grid(True, alpha=0.3)
+                ax2.set_xlim([0, 22050])  # Nyquist frequency
+            else:
+                ax2.text(0.5, 0.5, 'Insufficient data for FFT', 
+                        horizontalalignment='center', verticalalignment='center',
+                        transform=ax2.transAxes)
+            
+            plt.tight_layout()
+            
+            # Create canvas and add to window
+            canvas = FigureCanvasTkAgg(fig, graph_window)
+            canvas.draw()
+            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+            
+            # Add info frame
+            info_frame = ttk.Frame(graph_window)
+            info_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
+            
+            # Audio statistics
+            stats_text = (f"Samples: {len(audio_data)} | "
+                         f"Duration: {len(audio_data)/44100.0:.3f}s | "
+                         f"Min: {np.min(audio_data):.4f} | "
+                         f"Max: {np.max(audio_data):.4f} | "
+                         f"RMS: {np.sqrt(np.mean(audio_data**2)):.4f}")
+            
+            ttk.Label(info_frame, text=stats_text).pack(side=tk.LEFT)
+            
+            # Close button
+            ttk.Button(info_frame, text="Close", 
+                      command=graph_window.destroy).pack(side=tk.RIGHT)
+            
+            # Save data button
+            def save_data():
+                try:
+                    filename = f"arm64_output_{len(audio_data)}_samples.txt"
+                    np.savetxt(filename, audio_data)
+                    self.log_output(f"✓ Audio data saved to {filename}")
+                except Exception as e:
+                    self.log_output(f"✗ Save failed: {e}")
+            
+            ttk.Button(info_frame, text="Save Data", 
+                      command=save_data).pack(side=tk.RIGHT, padx=(0, 5))
+            
+            self.log_output("📊 Audio analysis window opened")
+            
+        except ImportError as e:
+            messagebox.showerror("Error", f"Matplotlib not available: {e}")
+            self.log_output("✗ Cannot show graph: matplotlib not available")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to create graph: {e}")
+            self.log_output(f"✗ Graph creation failed: {e}")
     
     def play_test_note(self):
         """Play a test note (A4 = 440Hz)"""
@@ -348,6 +456,111 @@ class TkinterEditor:
                            "4K Softsynth Editor - Tkinter Version\n\n"
                            "ARM64 Assembly Synthesizer Interface\n"
                            "Built with Python and Tkinter")
+    
+    def setup_waveform_display(self, parent_frame):
+        """Set up the embedded waveform display"""
+        try:
+            # Create matplotlib figure
+            self.waveform_fig, self.waveform_ax = plt.subplots(figsize=(6, 3))
+            self.waveform_fig.patch.set_facecolor('white')
+            
+            # Configure the plot
+            self.waveform_ax.set_title('Waveform Visualization')
+            self.waveform_ax.set_xlabel('Time (samples)')
+            self.waveform_ax.set_ylabel('Amplitude')
+            self.waveform_ax.grid(True, alpha=0.3)
+            self.waveform_ax.set_ylim([-1.1, 1.1])
+            
+            # Initial empty plot
+            self.waveform_ax.text(0.5, 0.5, 'Loading waveform...', 
+                                 horizontalalignment='center', verticalalignment='center',
+                                 transform=self.waveform_ax.transAxes, fontsize=10, alpha=0.7)
+            
+            # Create canvas and add to parent frame
+            self.waveform_canvas = FigureCanvasTkAgg(self.waveform_fig, parent_frame)
+            self.waveform_canvas.draw()
+            self.waveform_canvas.get_tk_widget().grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+            
+            # Auto-update waveform after a short delay to allow synth initialization
+            self.root.after(100, self.auto_update_waveform)
+            
+            # Log only if output_text is available
+            if hasattr(self, 'output_text'):
+                self.log_output("✓ Waveform display initialized")
+            
+        except ImportError as e:
+            # Fallback if matplotlib not available
+            fallback_label = ttk.Label(parent_frame, text="Matplotlib not available for waveform display")
+            fallback_label.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+            # Log only if output_text is available
+            if hasattr(self, 'output_text'):
+                self.log_output("⚠ Waveform display unavailable: matplotlib not found")
+        except Exception as e:
+            # General error fallback
+            fallback_label = ttk.Label(parent_frame, text=f"Waveform display error: {e}")
+            fallback_label.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+            # Log only if output_text is available
+            if hasattr(self, 'output_text'):
+                self.log_output(f"✗ Waveform display setup failed: {e}")
+    
+    def auto_update_waveform(self):
+        """Automatically update the waveform display"""
+        if not self.waveform_ax or not self.synth:
+            return
+            
+        try:
+            # Get audio data from synthesizer
+            audio_data = self.synth.render_instrument_note(0, 64);
+            
+            if audio_data is not None and len(audio_data) > 0:
+                # Clear previous plot
+                self.waveform_ax.clear()
+                
+                # Configure the plot
+                # self.waveform_ax.set_title('Current Instrument Waveform')
+                self.waveform_ax.set_xlabel('Time (samples)')
+                self.waveform_ax.set_ylabel('Amplitude')
+                self.waveform_ax.grid(True, alpha=0.3)
+                # self.waveform_ax.set_ylim([-1.1, 10.1])
+                
+                # Plot the waveform - limit to first 2000 samples for visibility
+                #display_samples = min(len(audio_data), 2000)
+                display_samples = len(audio_data)
+                time_axis = np.arange(display_samples)
+                self.waveform_ax.plot(time_axis, audio_data[:display_samples], 'b-', linewidth=0.8)
+                
+                # Add statistics text
+                # stats_text = (f"Samples: {len(audio_data)} | "
+                #              f"Min: {np.min(audio_data):.3f} | "
+                #              f"Max: {np.max(audio_data):.3f} | "
+                #              f"RMS: {np.sqrt(np.mean(audio_data**2)):.3f}")
+                
+                # self.waveform_ax.text(0.02, 0.95, stats_text, transform=self.waveform_ax.transAxes,
+                #                      verticalalignment='top', fontsize=8,
+                #                      bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+                
+                # Update canvas
+                if self.waveform_canvas:
+                    self.waveform_canvas.draw()
+                
+            else:
+                # Show empty state
+                self.waveform_ax.clear()
+                self.waveform_ax.set_title('Instrument Waveform')
+                self.waveform_ax.set_xlabel('Time (samples)')
+                self.waveform_ax.set_ylabel('Amplitude')
+                self.waveform_ax.grid(True, alpha=0.3)
+                self.waveform_ax.set_ylim([-1.1, 1.1])
+                self.waveform_ax.text(0.5, 0.5, 'No audio data available', 
+                                     horizontalalignment='center', verticalalignment='center',
+                                     transform=self.waveform_ax.transAxes, fontsize=10, alpha=0.7)
+                
+                if self.waveform_canvas:
+                    self.waveform_canvas.draw()
+                
+        except Exception as e:
+            if hasattr(self, 'output_text'):
+                self.log_output(f"Auto-waveform update failed: {e}")
     
     def run(self):
         """Main application entry point"""

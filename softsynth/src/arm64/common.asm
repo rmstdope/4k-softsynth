@@ -22,7 +22,6 @@
 .equ ENVELOPE_PARAM_RELEASE,ENVELOPE_PARAM_SUSTAIN + 4
 .equ ENVELOPE_PARAM_GAIN,   ENVELOPE_PARAM_RELEASE + 4
 .equ ENVELOPE_PARAM_SIZE,   ENVELOPE_PARAM_GAIN + 4
-
 #define	ENV_ATTACK(val) val
 #define	ENV_DECAY(val) val
 #define	ENV_SUSTAIN(val) val
@@ -33,19 +32,6 @@
 .equ ENV_STATE_SUSTAIN,  2
 .equ ENV_STATE_RELEASE,  3
 .equ ENV_STATE_OFF,      4
-
-.macro STOREVAL amount, destination
-    .byte \amount
-    .hword \destination
-.endmacro
-
-.equ STOREVAL_PARAM_AMOUNT, 0
-.equ STOREVAL_PARAM_SIZE, STOREVAL_PARAM_AMOUNT + 4
-#define STORE_AMOUNT(val) val
-#define STORE_DEST(val) val
-.equ STOREVAL_POP,  0x4000
-.equ STOREVAL_ADD,  0x8000
-.equ STOREVAL_MASK, 0x3FFF
 
 // Oscillator
 .macro OSCILLATOR transpose, detune, phase, gates, color, shape, gain, type
@@ -72,7 +58,6 @@
 .equ OSCILLATOR_TRIANGLE,   0x08
 .equ OSCILLATOR_NOISE,      0x10
 .equ OSCILLATOR_LFO,        0x20
-
 .equ OSCILLATOR_WS_PHASE,           0
 .equ OSCILLATOR_WS_GAIN_MOD,        OSCILLATOR_WS_PHASE + 4
 .equ OSCILLATOR_WS_TRANSPOSE_MOD,   OSCILLATOR_WS_GAIN_MOD + 4 // Value will be multiplied by 128
@@ -81,7 +66,6 @@
 .equ OSCILLATOR_WS_COLOR_MOD,       OSCILLATOR_WS_FREQUENCY_MOD + 4
 .equ OSCILLATOR_WS_PHASE_MOD,       OSCILLATOR_WS_COLOR_MOD + 4
 .equ OSCILLATOR_WS_SIZE,            OSCILLATOR_WS_PHASE_MOD + 4
-
 .equ OSCILLATOR_PARAM_TRANSPOSE,    0
 .equ OSCILLATOR_PARAM_DETUNE,       OSCILLATOR_PARAM_TRANSPOSE + 4
 .equ OSCILLATOR_PARAM_PHASE,        OSCILLATOR_PARAM_DETUNE + 4
@@ -91,6 +75,25 @@
 .equ OSCILLATOR_PARAM_GAIN,         OSCILLATOR_PARAM_SHAPE + 4
 .equ OSCILLATOR_PARAM_SIZE,         OSCILLATOR_PARAM_GAIN + 4
 
+.macro STOREVAL amount, destination
+    .byte \amount
+    .hword \destination
+.endmacro
+.equ STOREVAL_PARAM_AMOUNT, 0
+.equ STOREVAL_PARAM_SIZE, STOREVAL_PARAM_AMOUNT + 4
+#define STORE_AMOUNT(val) val
+#define STORE_DEST(val) val
+.equ STOREVAL_POP,  0x4000
+.equ STOREVAL_ADD,  0x8000
+.equ STOREVAL_MASK, 0x3FFF
+
+.macro OPERATION operand
+    .byte \operand
+.endmacro
+.equ OPERATION_PARAM_OPERAND, 0
+.equ OPERATION_PARAM_SIZE, OPERATION_PARAM_OPERAND + 4
+#define OPERATION_OPERAND(val) val
+.equ OPERATOR_MULP,  1
 
 // Output
 .macro OUTPUT gain
