@@ -3,11 +3,12 @@ Wrapper for the ARM64 synthesizer engine
 Provides Python interface to the native 4K softsynth ARM64 assembly
 """
 
+import os
 import numpy as np
 
 # Try to import the compiled C++ extension
 try:
-    import synth_engine
+    import synth_engine  # pylint: disable=import-error
     SYNTH_ENGINE_AVAILABLE = True
 except ImportError:
     print("Warning: synth_engine C++ extension not available. Running in simulation mode.")
@@ -15,29 +16,28 @@ except ImportError:
 
 class SynthWrapper:
     """Python wrapper for the ARM64 synthesizer engine"""
-    
+
     def __init__(self):
         """Initialize the synthesizer wrapper
         """
         self.engine = None
         self.is_initialized = False
-        
+
         if SYNTH_ENGINE_AVAILABLE:
             try:
-                import os
                 print(f"🔍 DEBUG: Python Process ID = {os.getpid()}")
-                print(f"   Use this PID to attach C++ debugger")
+                print("   Use this PID to attach C++ debugger")
                 # Create the ARM64 synth engine instance
-                self.engine = synth_engine.SynthEngine()
+                self.engine = synth_engine.SynthEngine()  # pylint: disable=c-extension-no-member
                 self.is_initialized = self.engine.initialize()
-                print(f"ARM64 Synthesizer initialized")
-            except Exception as e:
+                print("ARM64 Synthesizer initialized")
+            except (ImportError, AttributeError, RuntimeError) as e:
                 print(f"Error initializing ARM64 synthesizer: {e}")
                 self.engine = None
 
     def render_note(self) -> np.ndarray:
         """Render audio samples for one note from the ARM64 synthesizer
-            
+
         Returns:
             NumPy array of mono audio samples
         """
@@ -46,14 +46,14 @@ class SynthWrapper:
                 # Get samples from ARM64 engine
                 samples = self.engine.render_note()
                 return np.array(samples, dtype=np.float32)
-            except Exception as e:
+            except (AttributeError, RuntimeError, ValueError) as e:
                 print(f"ARM64 render error: {e}")
                 # Fall through to simulation mode
         return np.array([0], dtype=np.float32)
 
     def render_instrument_note(self, instrument_num: int, note_num: int) -> np.ndarray:
         """Render audio samples for one note from the ARM64 synthesizer
-            
+
         Returns:
             NumPy array of mono audio samples
         """
@@ -62,14 +62,14 @@ class SynthWrapper:
                 # Get samples from ARM64 engine
                 samples = self.engine.render_instrument_note(instrument_num, note_num)
                 return np.array(samples, dtype=np.float32)
-            except Exception as e:
+            except (AttributeError, RuntimeError, ValueError) as e:
                 print(f"ARM64 render error: {e}")
                 # Fall through to simulation mode
         return np.array([0], dtype=np.float32)
 
     # def set_parameter(self, instrument: int, parameter: int, value: float):
     #     """Set a synthesizer parameter in the transformed_parameters array
-        
+
     #     Args:
     #         instrument: Instrument number (0-3) - currently unused, parameters are global
     #         parameter: Parameter index (0-15)
@@ -83,10 +83,10 @@ class SynthWrapper:
     #     else:
     #         # Simulation mode
     #         print(f"Set parameter: instrument={instrument}, param={parameter}, value={value}")
-    
+
     # def trigger_note(self, instrument: int, note: int, velocity: float = 1.0):
     #     """Trigger a note on the specified instrument
-        
+
     #     Args:
     #         instrument: Instrument number (0-3)
     #         note: MIDI note number (0-127)
@@ -100,10 +100,11 @@ class SynthWrapper:
     #     else:
     #         # Simulation mode
     #         print(f"Trigger note: instrument={instrument}, note={note}, velocity={velocity}")
-    
+
     # def release_note(self, instrument: int, note: int):
-    #     """Release a note on the specified instrument (not directly supported in current ARM64 code)
-        
+    #     """Release a note on the specified instrument
+    #     (not directly supported in current ARM64 code)
+
     #     Args:
     #         instrument: Instrument number (0-3)
     #         note: MIDI note number (0-127)
@@ -111,37 +112,37 @@ class SynthWrapper:
     #     # The current ARM64 assembly doesn't have explicit note release
     #     # Notes are released through the envelope system
     #     print(f"Release note: instrument={instrument}, note={note} (handled by envelope)")
-    
+
     # # ARM64 Assembly Function Wrappers
     # def call_transform_values(self):
     #     """Call the ARM64 transform_values function"""
     #     if self.engine and self.is_initialized:
     #         self.engine.call_transform_values()
-    
+
     # def call_envelope_function(self):
     #     """Call the ARM64 envelope_function"""
     #     if self.engine and self.is_initialized:
     #         self.engine.call_envelope_function()
-    
+
     # def call_storeval_function(self):
     #     """Call the ARM64 storeval_function"""
     #     if self.engine and self.is_initialized:
     #         self.engine.call_storeval_function()
-    
+
     # def call_process_stack(self):
     #     """Call the ARM64 process_stack function"""
     #     if self.engine and self.is_initialized:
     #         self.engine.call_process_stack()
-    
+
     # def call_new_instrument_note(self):
     #     """Call the ARM64 new_instrument_note function"""
     #     if self.engine and self.is_initialized:
     #         self.engine.call_new_instrument_note()
-    
-    # def set_adsr(self, instrument: int, attack: float, decay: float, 
+
+    # def set_adsr(self, instrument: int, attack: float, decay: float,
     #              sustain: float, release: float, gain: float = 1.0):
     #     """Set ADSR envelope parameters using the ARM64 engine
-        
+
     #     Args:
     #         instrument: Instrument number (0-3) - currently not used in ARM64 code
     #         attack: Attack time (0.0-1.0)
@@ -157,14 +158,15 @@ class SynthWrapper:
     #             print(f"ADSR set error: {e}")
     #     else:
     #         # Simulation mode
-    #         print(f"Set ADSR: instrument={instrument}, A={attack}, D={decay}, S={sustain}, R={release}, G={gain}")
-    
-    # def set_oscillator(self, instrument: int, waveform_type: int, transpose: float, 
+    #         print(f"Set ADSR: instrument={instrument}, A={attack}, D={decay}, "
+    #               f"S={sustain}, R={release}, G={gain}")
+
+    # def set_oscillator(self, instrument: int, waveform_type: int, transpose: float,
     #                   detune: float, color: float, gain: float):
     #     """Set oscillator parameters using the ARM64 engine
-        
+
     #     Args:
-    #         instrument: Instrument number (0-3) - currently not used in ARM64 code  
+    #         instrument: Instrument number (0-3) - currently not used in ARM64 code
     #         waveform_type: Waveform type (0=sine, 1=saw, 2=square, etc.)
     #         transpose: Transpose in semitones
     #         detune: Detune amount
@@ -173,20 +175,21 @@ class SynthWrapper:
     #     """
     #     if self.engine and self.is_initialized:
     #         try:
-    #             self.engine.set_oscillator_parameters(waveform_type, transpose, detune, color, gain)
+    #             self.engine.set_oscillator_parameters(
+    #                 waveform_type, transpose, detune, color, gain)
     #         except Exception as e:
     #             print(f"Oscillator set error: {e}")
     #     else:
     #         # Simulation mode
     #         print(f"Set Oscillator: instrument={instrument}, type={waveform_type}, "
     #               f"transpose={transpose}, detune={detune}, color={color}, gain={gain}")
-    
+
     # def get_transformed_parameter(self, index: int) -> float:
     #     """Get a parameter from the ARM64 transformed_parameters array
-        
+
     #     Args:
     #         index: Parameter index (0-15)
-            
+
     #     Returns:
     #         Parameter value
     #     """
@@ -196,7 +199,7 @@ class SynthWrapper:
     #         except Exception as e:
     #             print(f"Parameter get error: {e}")
     #     return 0.0
-    
+
     def is_ready(self) -> bool:
         """Check if the synthesizer is ready for use"""
         if self.engine:
@@ -205,7 +208,7 @@ class SynthWrapper:
 
     def get_constants(self) -> dict:
         """Get synthesizer constants from the ARM64 code
-        
+
         Returns:
             Dictionary of constants
         """
@@ -213,6 +216,7 @@ class SynthWrapper:
             return {}
 
         try:
+            # pylint: disable=c-extension-no-member
             return {
                 'SAMPLE_RATE': synth_engine.SAMPLE_RATE,
                 'BEATS_PER_MINUTE': synth_engine.BEATS_PER_MINUTE,
@@ -225,6 +229,6 @@ class SynthWrapper:
                 'OPERATION_ID': synth_engine.OPERATION_ID,
                 'HLD': synth_engine.HLD,
             }
-        except Exception as e:
+        except (AttributeError, ImportError) as e:
             print(f"Constants access error: {e}")
             return {}
