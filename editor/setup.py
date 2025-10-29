@@ -2,13 +2,13 @@
 Setup script for building the C++ extension module
 """
 
-from pybind11.setup_helpers import Pybind11Extension, build_ext
-import pybind11
-from setuptools import setup
 import os
 import subprocess
 import sys
 from pathlib import Path
+from pybind11.setup_helpers import Pybind11Extension, build_ext
+import pybind11
+from setuptools import setup
 
 class CustomBuildExt(build_ext):
     """Custom build extension that rebuilds ARM64 objects when assembly files change"""

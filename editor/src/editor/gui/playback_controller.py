@@ -97,10 +97,12 @@ class PlaybackController:
                         self.main_editor.waveform_display.show_audio_graph(audio_data)
                 else:
                     if hasattr(self.main_editor, 'status_panel'):
-                        self.main_editor.status_panel.log_output("✗ ARM64 engine test failed: no audio data")
+                        self.main_editor.status_panel.log_output(
+                            "✗ ARM64 engine test failed: no audio data")
             else:
                 if hasattr(self.main_editor, 'status_panel'):
-                    self.main_editor.status_panel.log_output("✗ ARM64 engine test failed: no synthesizer")
+                    self.main_editor.status_panel.log_output(
+                        "✗ ARM64 engine test failed: no synthesizer")
 
         except (RuntimeError, ValueError, OSError) as e:
             if hasattr(self.main_editor, 'logger'):
