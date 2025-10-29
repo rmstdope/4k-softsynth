@@ -126,14 +126,17 @@ cd editor && python setup.py build_ext --inplace  # Build Python extension
 
 ```
 editor/
-├── __main__.py         # Main GUI application (entry point)
-├── audio/
-│   └── synth_wrapper.py    # Python synthesizer interface
-├── cpp/
-│   └── synth_bindings.cpp  # C++ bindings to ARM64 assembly
-├── gui/                    # PySimpleGUI modules
-├── utils/                  # Logging and utilities
-├── DEBUGGING.md            # Debugging guide for VS Code
+├── src/editor/             # Main Python package
+│   ├── __main__.py         # Module entry point
+│   ├── gui/                # GUI components
+│   ├── audio/              # Audio processing
+│   │   └── synth_wrapper.py    # Python synthesizer interface
+│   ├── cpp/                # C++ bindings
+│   │   └── synth_bindings.cpp  # C++ bindings to ARM64 assembly
+│   └── utils/              # Logging and utilities
+├── tests/                  # Test suite
+├── docs/                   # Documentation
+│   └── DEBUGGING.md        # Debugging guide for VS Code
 └── build.sh               # Automated build script
 ```
 

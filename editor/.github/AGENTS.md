@@ -16,11 +16,9 @@ editor/
 ├── src/editor/           # Main Python package (src layout)
 │   ├── __main__.py      # Module entry point
 │   ├── gui/             # GUI components subpackage
-│   │   ├── editor.py    # Main Editor class
-│   │   └── parameter_control.py  # GUI parameter controls
 │   ├── audio/           # Audio processing subpackage
+│   ├── cpp/             # C++ binding source code
 │   └── utils/           # Utility modules
-├── cpp/                 # C++ binding source code
 ├── tests/               # Test suite
 ├── pyproject.toml       # Modern Python project configuration
 ├── setup.py            # C++ extension build logic
@@ -35,11 +33,24 @@ editor/
 - **Maintain** src/ layout structure for proper packaging
 - **Follow** PEP 8 naming conventions and style guidelines
 - **Keep** `__init__.py` files clean with proper exports
+- **Avoid** exporting GUI classes from the main package - use subpackage imports instead
+
+### Package Organization Principles
+
+- **Main package** (`editor`): Contains only metadata and documentation, no class exports
+- **Subpackages** (`gui`, `audio`, `utils`, `cpp`): Export their specific functionality
+- **Import from subpackages**: `from editor.gui import Editor` (preferred)
+- **Avoid coupling**: Main package should not import from subpackages in `__init__.py`
 
 ### Import Standards
 
 ```python
-# ✅ Correct - absolute imports
+# ✅ Correct - subpackage imports (preferred)
+from editor.gui import Editor, ParameterControl
+from editor.audio import SynthWrapper, Audio
+from editor.utils import setup_logger
+
+# ✅ Also correct - direct imports when needed
 from editor.audio.synth_wrapper import SynthWrapper
 from editor.gui.parameter_control import ParameterControl
 
@@ -161,6 +172,13 @@ pylint src/editor/ --output-format=text > pylint_report.txt
 - **Test isolation**: Each test should be independent
 
 ### C++ Integration Guidelines
+
+**C++ Module Structure**:
+
+- All C++ binding code is in `src/editor/cpp/`
+- Main binding file: `src/editor/cpp/synth_bindings.cpp`
+- Build system references this path in `setup.py`
+- Compiled extensions are placed in the project root
 
 #### pybind11 Bindings
 

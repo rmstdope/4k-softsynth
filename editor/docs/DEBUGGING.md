@@ -62,7 +62,7 @@ The following debug configurations are available in VS Code (accessible via F5 o
 
 ### For ARM64 Synthesizer Issues
 
-1. Set breakpoints in `audio/synth_wrapper.py` or `cpp/synth_bindings.cpp`
+1. Set breakpoints in `audio/synth_wrapper.py` or `src/editor/cpp/synth_bindings.cpp`
 2. Use "Debug Tkinter Editor" or "Debug CLI Editor"
 3. Trigger ARM64 functions via GUI controls or CLI commands
 4. Step through Python → C++ → ARM64 call chain
@@ -118,7 +118,7 @@ def run_performance_test(self):
 
 ## ARM64 Integration Debugging
 
-### C++ Bindings (`cpp/synth_bindings.cpp`)
+### C++ Bindings (`src/editor/cpp/synth_bindings.cpp`)
 
 Set breakpoints in:
 
