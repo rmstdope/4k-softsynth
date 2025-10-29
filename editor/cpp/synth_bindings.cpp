@@ -47,13 +47,18 @@ public:
 
     const std::vector<int> &get_instructions() const { return instructions_; }
 
-    const std::vector<std::vector<uint8_t>> &get_parameters() const { return parameters_; }
+    const std::vector<std::vector<uint8_t *>> &get_parameters() const { return parameters_; }
 
     std::vector<uint8_t> get_instruction_parameters(uint32_t instruction_index) const
     {
         if (instruction_index < parameters_.size())
         {
-            return parameters_[instruction_index];
+            std::vector<uint8_t> values;
+            for (uint8_t *ptr : parameters_[instruction_index])
+            {
+                values.push_back(*ptr); // Dereference pointer to get actual value
+            }
+            return values;
         }
         return std::vector<uint8_t>();
     }
@@ -84,7 +89,7 @@ public:
     {
         if (instruction_index < parameters_.size() && param_index < parameters_[instruction_index].size())
         {
-            parameters_[instruction_index][param_index] = value;
+            *(parameters_[instruction_index][param_index]) = value; // Dereference pointer to update actual parameter
             DEBUG_LOG("Updated Instrument " << id_ << " instruction " << instruction_index
                                             << " param " << param_index << " to " << static_cast<int>(value));
         }
@@ -118,7 +123,7 @@ public:
 private:
     uint32_t id_;
     std::vector<int> instructions_;
-    std::vector<std::vector<uint8_t>> parameters_;
+    std::vector<std::vector<uint8_t *>> parameters_; // Store pointers to actual parameter locations
 
     void load_instructions_and_parameters()
     {
@@ -184,18 +189,18 @@ private:
             current_instrument++;
         }
 
-        // Load parameters for our instrument
+        // Load parameter pointers for our instrument
         for (size_t i = 0; i < instructions_.size(); ++i)
         {
             uint32_t num_params = get_instruction_param_count(instructions_[i]);
-            std::vector<uint8_t> instruction_params;
+            std::vector<uint8_t *> instruction_param_ptrs;
 
             for (uint32_t j = 0; j < num_params; ++j)
             {
-                instruction_params.push_back(param_ptr[j]);
+                instruction_param_ptrs.push_back(&param_ptr[j]); // Store pointer to actual parameter
             }
 
-            parameters_.push_back(instruction_params);
+            parameters_.push_back(instruction_param_ptrs);
             param_ptr += num_params;
         }
     }
