@@ -344,25 +344,25 @@ private:
         {
         case ENVELOPE_ID:
             // Attack, Decay, Sustain, Release, Gain - all uint8_t for now
-            return {static_cast<uint8_t>(ParameterType::UINT8), 
-                    static_cast<uint8_t>(ParameterType::UINT8), 
-                    static_cast<uint8_t>(ParameterType::UINT8), 
-                    static_cast<uint8_t>(ParameterType::UINT8), 
+            return {static_cast<uint8_t>(ParameterType::UINT8),
+                    static_cast<uint8_t>(ParameterType::UINT8),
+                    static_cast<uint8_t>(ParameterType::UINT8),
+                    static_cast<uint8_t>(ParameterType::UINT8),
                     static_cast<uint8_t>(ParameterType::UINT8)};
         case OSCILLATOR_ID:
             // Transpose, Detune, Phase, Gates, Color, Shape, Gain, Type - all uint8_t for now
-            return {static_cast<uint8_t>(ParameterType::UINT8), 
-                    static_cast<uint8_t>(ParameterType::UINT8), 
-                    static_cast<uint8_t>(ParameterType::UINT8), 
-                    static_cast<uint8_t>(ParameterType::UINT8), 
-                    static_cast<uint8_t>(ParameterType::UINT8), 
-                    static_cast<uint8_t>(ParameterType::UINT8), 
-                    static_cast<uint8_t>(ParameterType::UINT8), 
+            return {static_cast<uint8_t>(ParameterType::UINT8),
+                    static_cast<uint8_t>(ParameterType::UINT8),
+                    static_cast<uint8_t>(ParameterType::UINT8),
+                    static_cast<uint8_t>(ParameterType::UINT8),
+                    static_cast<uint8_t>(ParameterType::UINT8),
+                    static_cast<uint8_t>(ParameterType::UINT8),
+                    static_cast<uint8_t>(ParameterType::UINT8),
                     static_cast<uint8_t>(ParameterType::UINT8)};
         case STOREVAL_ID:
             // Amount, Destination1, Destination2 - all uint8_t for now
-            return {static_cast<uint8_t>(ParameterType::UINT8), 
-                    static_cast<uint8_t>(ParameterType::UINT8), 
+            return {static_cast<uint8_t>(ParameterType::UINT8),
+                    static_cast<uint8_t>(ParameterType::UINT8),
                     static_cast<uint8_t>(ParameterType::UINT8)};
         case OPERATION_ID:
             // Operand - uint8_t for now
