@@ -70,11 +70,15 @@ class InstrumentPanel:
         self._clear_instrument_controls()
         
         # Get current instrument
-        if not hasattr(self.main_editor, 'synth_engine') or not self.main_editor.synth_engine:
+        if not hasattr(self.main_editor, 'synth') or not self.main_editor.synth:
             self._show_no_instrument_message()
             return
             
-        instrument = self.main_editor.synth_engine.get_instrument(self.main_editor.current_instrument)
+        if not self.main_editor.synth.has_instruments():
+            self._show_no_instrument_message()
+            return
+            
+        instrument = self.main_editor.synth.get_instrument(self.main_editor.current_instrument)
         if not instrument:
             self._show_no_instrument_message()
             return
@@ -165,7 +169,7 @@ class InstrumentPanel:
         
         # Update the instrument parameter
         try:
-            instrument = self.main_editor.synth_engine.get_instrument(self.main_editor.current_instrument)
+            instrument = self.main_editor.synth.get_instrument(self.main_editor.current_instrument)
             if instrument:
                 instrument.update_parameter(instruction_index, param_index, param_value)
                 
@@ -248,8 +252,10 @@ class InstrumentPanel:
             instrument_num = int(instrument_text.split()[-1])
             self.main_editor.current_instrument = instrument_num
             
-            if hasattr(self.main_editor, 'status_panel'):
-                self.main_editor.status_panel.log_output(f"🎹 Switched to {instrument_text}")
+            if (hasattr(self.main_editor, 'components') and 
+                self.main_editor.components and
+                hasattr(self.main_editor.components, 'status_panel')):
+                self.main_editor.components.status_panel.log_output(f"🎹 Switched to {instrument_text}")
                 
             # Recreate controls for the new instrument
             self._create_controls_for_current_instrument()
@@ -303,8 +309,10 @@ class InstrumentPanel:
                 pass
                 
             # Refresh waveform display if available
-            if hasattr(self.main_editor, 'waveform_display'):
-                self.main_editor.waveform_display.auto_update_waveform_from_synth()
+            if (hasattr(self.main_editor, 'components') and 
+                self.main_editor.components and
+                hasattr(self.main_editor.components, 'waveform_display')):
+                self.main_editor.components.waveform_display.auto_update_waveform_from_synth()
                 
         except (RuntimeError, ValueError) as e:
             if hasattr(self.main_editor, 'logger'):

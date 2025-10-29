@@ -64,3 +64,22 @@ class SynthWrapper:
             'OPERATION_ID': synth_engine.OPERATION_ID,
             'HLD': synth_engine.HLD,
         }
+
+    def get_instrument(self, instrument_num: int):
+        """Get an instrument object for parameter management
+        
+        Args:
+            instrument_num: The instrument number (0-3)
+            
+        Returns:
+            Instrument object or None if not found
+        """
+        return self.engine.get_instrument(instrument_num)
+
+    def has_instruments(self) -> bool:
+        """Check if the synthesizer has instrument data available
+        
+        Returns:
+            True if instruments are available, False otherwise
+        """
+        return hasattr(self.engine, 'get_instrument') and self.engine is not None

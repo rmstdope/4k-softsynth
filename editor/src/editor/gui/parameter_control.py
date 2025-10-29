@@ -3,15 +3,15 @@ Parameter Control Widget for 4K Softsynth Editor
 A reusable slider-value pair control for parameters
 """
 
+from typing import Optional, Callable, Dict, Any
 import tkinter as tk
 from tkinter import ttk
 
 
-# pylint: disable=too-many-instance-attributes,too-many-public-methods
 class ParameterControl:
     """A reusable slider-value pair control for parameters"""
 
-    def __init__(self, parent, name, config):
+    def __init__(self, parent: tk.Widget, name: str, config: Dict[str, Any]) -> None:
         """Initialize a parameter control
 
         Args:
@@ -22,12 +22,12 @@ class ParameterControl:
         self.name = name
         self.min_val = 0
         self.max_val = 128
-        self.update_callback = config.get('update_callback')
+        self.update_callback: Optional[Callable[[], None]] = config.get('update_callback')
 
         # Create the control widgets
         self._create_widgets(parent, config['row'], config['initial_value'])
 
-    def _create_widgets(self, parent, row, initial_value):
+    def _create_widgets(self, parent: tk.Widget, row: int, initial_value: float) -> None:
         """Create the label, slider, and entry widgets"""
         # Label
         ttk.Label(parent, text=f"{self.name}:").grid(row=row, column=0, sticky=tk.W)
@@ -48,14 +48,14 @@ class ParameterControl:
         self.entry.bind('<Return>', self._on_entry_change)
         self.entry.bind('<FocusOut>', self._on_entry_change)
 
-    def _on_slider_change(self, value):
+    def _on_slider_change(self, value: str) -> None:
         """Handle slider changes"""
         self.entry.delete(0, tk.END)
         self.entry.insert(0, f"{int(float(value))}")
         if self.update_callback:
             self.update_callback()
 
-    def _on_entry_change(self, _event):
+    def _on_entry_change(self, _event: tk.Event) -> None:
         """Handle entry field changes"""
         try:
             value = int(float(self.entry.get()))
@@ -70,11 +70,11 @@ class ParameterControl:
             self.entry.delete(0, tk.END)
             self.entry.insert(0, f"{self.var.get()}")
 
-    def get_value(self):
+    def get_value(self) -> int:
         """Get the current parameter value"""
         return self.var.get()
 
-    def set_value(self, value):
+    def set_value(self, value: float) -> None:
         """Set the parameter value programmatically"""
         value = int(max(self.min_val, min(self.max_val, value)))
         self.var.set(value)
