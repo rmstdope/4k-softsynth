@@ -18,11 +18,13 @@ class ParameterControl:
             parent: Parent tkinter widget
             name: Display name for the parameter
             config: Dict with 'initial_value', 'row', optional 'update_callback', 
-                   optional 'min_value', and optional 'max_value'
+                   optional 'min_value', 'max_value', 'param_type', and 'type_name'
         """
         self.name = name
         self.min_val = config.get('min_value', 0)
         self.max_val = config.get('max_value', 128)
+        self.param_type = config.get('param_type', 0)
+        self.type_name = config.get('type_name', 'uint8')
         self.update_callback: Optional[Callable[[], None]] = config.get('update_callback')
 
         # Create the control widgets
@@ -30,8 +32,9 @@ class ParameterControl:
 
     def _create_widgets(self, parent: tk.Widget, row: int, initial_value: float) -> None:
         """Create the label, slider, and entry widgets"""
-        # Label
-        ttk.Label(parent, text=f"{self.name}:").grid(row=row, column=0, sticky=tk.W)
+        # Label with parameter type information
+        label_text = f"{self.name} ({self.type_name}):"
+        ttk.Label(parent, text=label_text).grid(row=row, column=0, sticky=tk.W)
 
         # Variable for the slider
         self.var = tk.IntVar(value=int(initial_value))

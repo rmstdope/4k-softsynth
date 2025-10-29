@@ -14,6 +14,13 @@
 #include <memory>
 #include <string>
 
+// Parameter data types
+enum class ParameterType : uint8_t
+{
+    UINT8 = 0,
+    UINT16 = 1
+};
+
 // Debug logging macro
 #ifdef DEBUG
 #define DEBUG_LOG(msg) std::cout << "[DEBUG] SynthEngine: " << msg << std::endl
@@ -83,6 +90,17 @@ public:
 
         int instruction_id = instructions_[instruction_index];
         return get_parameter_ranges_for_instruction(instruction_id);
+    }
+
+    std::vector<uint8_t> get_instruction_parameter_types(uint32_t instruction_index) const
+    {
+        if (instruction_index >= instructions_.size())
+        {
+            return std::vector<uint8_t>();
+        }
+
+        int instruction_id = instructions_[instruction_index];
+        return get_parameter_types_for_instruction(instruction_id);
     }
 
     std::string get_instruction_name(uint32_t instruction_index) const
@@ -294,25 +312,70 @@ private:
         {
         case ENVELOPE_ID:
             // Attack, Decay, Sustain, Release, Gain
-            return {{0, 128}, {0, 128}, {0, 128}, {0, 128}, {0, 128}};
+            return {{0, 255}, {0, 255}, {0, 255}, {0, 255}, {0, 128}};
         case OSCILLATOR_ID:
             // Transpose, Detune, Phase, Gates, Color, Shape, Gain, Type
-            return {{0, 128}, {0, 128}, {0, 128}, {0, 128}, {0, 128}, {0, 128}, {0, 128}, {1, 8}};
+            return {{0, 127}, {0, 255}, {0, 255}, {0, 15}, {0, 255}, {0, 7}, {0, 128}, {0, 7}};
         case STOREVAL_ID:
             // Amount, Destination1, Destination2
-            return {{0, 128}, {0, 255}, {0, 255}};
+            return {{0, 255}, {0, 255}, {0, 255}};
         case OPERATION_ID:
             // Operand
-            return {{1, 1}};
+            return {{0, 15}};
         case OUTPUT_ID:
             // Gain
             return {{0, 128}};
         case FILTER_ID:
             // Cutoff
-            return {{0, 128}};
+            return {{0, 255}};
         case PANNING_ID:
             // Position (-64 to +63, but we'll map 0-127)
-            return {{0, 128}};
+            return {{0, 127}};
+        case ACCUMULATE_ID:
+            return {}; // No parameters
+        default:
+            return {};
+        }
+    }
+
+    std::vector<uint8_t> get_parameter_types_for_instruction(int instruction_id) const
+    {
+        switch (instruction_id)
+        {
+        case ENVELOPE_ID:
+            // Attack, Decay, Sustain, Release, Gain - all uint8_t for now
+            return {static_cast<uint8_t>(ParameterType::UINT8), 
+                    static_cast<uint8_t>(ParameterType::UINT8), 
+                    static_cast<uint8_t>(ParameterType::UINT8), 
+                    static_cast<uint8_t>(ParameterType::UINT8), 
+                    static_cast<uint8_t>(ParameterType::UINT8)};
+        case OSCILLATOR_ID:
+            // Transpose, Detune, Phase, Gates, Color, Shape, Gain, Type - all uint8_t for now
+            return {static_cast<uint8_t>(ParameterType::UINT8), 
+                    static_cast<uint8_t>(ParameterType::UINT8), 
+                    static_cast<uint8_t>(ParameterType::UINT8), 
+                    static_cast<uint8_t>(ParameterType::UINT8), 
+                    static_cast<uint8_t>(ParameterType::UINT8), 
+                    static_cast<uint8_t>(ParameterType::UINT8), 
+                    static_cast<uint8_t>(ParameterType::UINT8), 
+                    static_cast<uint8_t>(ParameterType::UINT8)};
+        case STOREVAL_ID:
+            // Amount, Destination1, Destination2 - all uint8_t for now
+            return {static_cast<uint8_t>(ParameterType::UINT8), 
+                    static_cast<uint8_t>(ParameterType::UINT8), 
+                    static_cast<uint8_t>(ParameterType::UINT8)};
+        case OPERATION_ID:
+            // Operand - uint8_t for now
+            return {static_cast<uint8_t>(ParameterType::UINT8)};
+        case OUTPUT_ID:
+            // Gain - uint8_t for now
+            return {static_cast<uint8_t>(ParameterType::UINT8)};
+        case FILTER_ID:
+            // Cutoff - uint8_t for now
+            return {static_cast<uint8_t>(ParameterType::UINT8)};
+        case PANNING_ID:
+            // Position - uint8_t for now
+            return {static_cast<uint8_t>(ParameterType::UINT8)};
         case ACCUMULATE_ID:
             return {}; // No parameters
         default:
@@ -438,6 +501,16 @@ public:
         return std::vector<std::pair<int, int>>();
     }
 
+    std::vector<uint8_t> get_instrument_instruction_parameter_types(uint32_t instrument_num, uint32_t instruction_index)
+    {
+        Instrument *instrument = get_instrument(instrument_num);
+        if (instrument)
+        {
+            return instrument->get_instruction_parameter_types(instruction_index);
+        }
+        return std::vector<uint8_t>();
+    }
+
     bool update_instrument_parameter(uint32_t instrument_num, uint32_t instruction_index, uint32_t param_index, uint8_t value)
     {
         Instrument *instrument = get_instrument(instrument_num);
@@ -485,6 +558,7 @@ PYBIND11_MODULE(synth_engine, m)
         .def("get_instruction_parameters", &Instrument::get_instruction_parameters, py::arg("instruction_index"))
         .def("get_instruction_parameter_names", &Instrument::get_instruction_parameter_names, py::arg("instruction_index"))
         .def("get_instruction_parameter_ranges", &Instrument::get_instruction_parameter_ranges, py::arg("instruction_index"))
+        .def("get_instruction_parameter_types", &Instrument::get_instruction_parameter_types, py::arg("instruction_index"))
         .def("get_instruction_name", &Instrument::get_instruction_name, py::arg("instruction_index"))
         .def("update_parameter", &Instrument::update_parameter, py::arg("instruction_index"), py::arg("param_index"), py::arg("value"))
         .def("render_note", &Instrument::render_note, py::arg("note_num"));
@@ -500,6 +574,7 @@ PYBIND11_MODULE(synth_engine, m)
         .def("get_instrument_instructions", &SynthEngine::get_instrument_instructions, py::arg("instrument_num"))
         .def("get_instrument_instruction_parameters", &SynthEngine::get_instrument_instruction_parameters, py::arg("instrument_num"), py::arg("instruction_index"))
         .def("get_instrument_instruction_parameter_ranges", &SynthEngine::get_instrument_instruction_parameter_ranges, py::arg("instrument_num"), py::arg("instruction_index"))
+        .def("get_instrument_instruction_parameter_types", &SynthEngine::get_instrument_instruction_parameter_types, py::arg("instrument_num"), py::arg("instruction_index"))
         .def("update_instrument_parameter", &SynthEngine::update_instrument_parameter, py::arg("instrument_num"), py::arg("instruction_index"), py::arg("param_index"), py::arg("value"));
 
     // Expose constants from defines.h
@@ -523,4 +598,8 @@ PYBIND11_MODULE(synth_engine, m)
     m.attr("PANNING_ID") = PANNING_ID;
     m.attr("OUTPUT_ID") = OUTPUT_ID;
     m.attr("INSTRUMENT_END") = INSTRUMENT_END;
+
+    // Parameter Types
+    m.attr("PARAM_TYPE_UINT8") = static_cast<uint8_t>(ParameterType::UINT8);
+    m.attr("PARAM_TYPE_UINT16") = static_cast<uint8_t>(ParameterType::UINT16);
 }

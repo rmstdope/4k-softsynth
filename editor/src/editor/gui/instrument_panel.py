@@ -4,6 +4,11 @@ import tkinter as tk
 from tkinter import ttk
 from .parameter_control import ParameterControl
 
+try:
+    import synth_engine
+except ImportError:
+    synth_engine = None
+
 
 class InstrumentPanel:
     """Manages instrument selection and parameter controls."""
@@ -91,8 +96,9 @@ class InstrumentPanel:
                 self._create_instruction_header(instr_name, row)
                 row += 1
 
-                # Get parameter ranges for this instruction
+                # Get parameter ranges and types for this instruction
                 param_ranges = instrument.get_instruction_parameter_ranges(instr_idx)
+                param_types = instrument.get_instruction_parameter_types(instr_idx)
 
                 # Create parameter controls
                 for param_idx, (param_name, param_value) in enumerate(
@@ -103,6 +109,7 @@ class InstrumentPanel:
                         'param_name': param_name,
                         'param_value': param_value,
                         'param_ranges': param_ranges,
+                        'param_types': param_types,
                         'row': row
                     }
                     self._create_single_parameter_control(param_info)
@@ -141,13 +148,14 @@ class InstrumentPanel:
 
         Args:
             param_info: Dict containing 'instr_idx', 'param_idx', 'param_name',
-                       'param_value', 'param_ranges', 'row'
+                       'param_value', 'param_ranges', 'param_types', 'row'
         """
         instr_idx = param_info['instr_idx']
         param_idx = param_info['param_idx']
         param_name = param_info['param_name']
         param_value = param_info['param_value']
         param_ranges = param_info['param_ranges']
+        param_types = param_info['param_types']
         row = param_info['row']
 
         # Create unique control ID for this parameter
@@ -158,6 +166,16 @@ class InstrumentPanel:
         if param_idx < len(param_ranges):
             min_val, max_val = param_ranges[param_idx]
 
+        # Get parameter type (default to UINT8 if not available)
+        param_type = 0  # UINT8
+        if param_idx < len(param_types):
+            param_type = param_types[param_idx]
+
+        # Determine type name for display
+        type_name = "uint8"
+        if synth_engine and param_type == synth_engine.PARAM_TYPE_UINT16:
+            type_name = "uint16"
+
         control = ParameterControl(
             parent=self.scrollable_frame,
             name=param_name,
@@ -166,6 +184,8 @@ class InstrumentPanel:
                 'row': row,
                 'min_value': min_val,
                 'max_value': max_val,
+                'param_type': param_type,
+                'type_name': type_name,
                 'update_callback': self._create_parameter_callback(instr_idx, param_idx)
             }
         )
