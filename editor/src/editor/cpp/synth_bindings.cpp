@@ -143,20 +143,26 @@ public:
                 else if (param_types[i] == static_cast<uint8_t>(ParameterType::UINT16))
                 {
                     // uint16_t parameter stored as two consecutive uint8_t values (little-endian)
-                    if (ptr_idx + 1 < parameters_[instruction_index].size())
+                    if (ptr_idx < parameters_[instruction_index].size())
                     {
-                        uint16_t value = *parameters_[instruction_index][ptr_idx] |
-                                         (*parameters_[instruction_index][ptr_idx + 1] << 8);
+                        uint8_t *param_ptr = parameters_[instruction_index][ptr_idx];
+                        uint16_t value = param_ptr[0] | (param_ptr[1] << 8);
                         // For Python interface, we'll return the low byte for compatibility
                         // The actual uint16 value will be handled by a separate method
                         values.push_back(value & 0xFF);
-                        ptr_idx += 2;
+                        ptr_idx++;
                     }
                     else
                     {
                         values.push_back(0);
                         ptr_idx++;
                     }
+                }
+                else if (param_types[i] == static_cast<uint8_t>(ParameterType::ENUM))
+                {
+                    // ENUM parameter stored as single uint8_t value
+                    values.push_back(*parameters_[instruction_index][ptr_idx]);
+                    ptr_idx++;
                 }
             }
             return values;
