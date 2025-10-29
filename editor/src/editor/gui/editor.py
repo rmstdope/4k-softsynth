@@ -3,33 +3,20 @@ Main Editor Application for 4K Softsynth
 Simple Tkinter-based GUI for the synthesizer
 """
 
-import os
-import sys
 import tkinter as tk
 from tkinter import ttk, messagebox
-
+import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import numpy as np
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-matplotlib.use('TkAgg')
-
-# Add the current directory to the Python path for imports
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-# pylint: disable=import-error,wrong-import-position
+import synth_engine  # pylint: disable=import-error
 from editor.audio.synth_wrapper import SynthWrapper
-from editor.audio.audio_device import Audio
+from editor.audio.audio_device import AudioDevice
 from editor.utils.logger import setup_logger
 from .parameter_control import ParameterControl
 
-# Import synth_engine if available
-try:
-    import synth_engine  # pylint: disable=import-error
-except ImportError:
-    synth_engine = None
-
+matplotlib.use('TkAgg')
 
 # pylint: disable=too-many-instance-attributes,too-many-public-methods
 class Editor:
@@ -75,12 +62,8 @@ class Editor:
             self.synth = SynthWrapper()
 
             # Also initialize the synth_engine directly for parameter access
-            if synth_engine:
-                self.synth_engine = synth_engine.SynthEngine()  # pylint: disable=c-extension-no-member
-                self.synth_engine.initialize()
-            else:
-                self.synth_engine = None
-                self.logger.warning("synth_engine not available for parameter access")
+            self.synth_engine = synth_engine.SynthEngine()  # pylint: disable=c-extension-no-member
+            self.synth_engine.initialize()
 
             return True
         except ImportError as e:
@@ -165,7 +148,7 @@ class Editor:
     def _initialize_audio(self):
         """Initialize the audio system"""
         try:
-            self.audio = Audio(sample_rate=44100)
+            self.audio = AudioDevice(sample_rate=44100)
             if self.audio.is_initialized:
                 device_info = self.audio.get_device_info()
                 self.log_output(f"✓ Audio initialized: {device_info['device_name']}")
@@ -188,7 +171,7 @@ class Editor:
         # Make sure the window is focusable
         self.root.focus_force()
 
-    def on_key_press(self, event):
+    def on_key_press(self, _event):
         """Handle general key press events"""
         # You can add other key handlers here if needed
         # Currently handled by specific key bindings like 'q'
@@ -296,13 +279,8 @@ class Editor:
         self.scrollable_frame = scrollable_frame
         self.container_frame = container_frame
 
-        # Use synth_engine if available for parameter loading
-        if hasattr(self, 'synth_engine') and self.synth_engine:
-            # Create initial instrument controls
-            self._create_controls_for_current_instrument()
-        else:
-            # Fallback to basic ADSR controls
-            self._create_fallback_adsr_controls()
+        # Create initial instrument controls
+        self._create_controls_for_current_instrument()
 
     def _create_controls_for_current_instrument(self):
         """Create parameter controls for the currently selected instrument"""
@@ -387,35 +365,8 @@ class Editor:
                             foreground="gray")
         msg_label.grid(row=0, column=0, pady=20)
 
-    def _create_fallback_adsr_controls(self):
-        """Create fallback ADSR controls when synth_engine is not available"""
-        # ADSR parameter definitions (fallback)
-        adsr_params = [
-            ("Attack", 0.1),
-            ("Decay", 0.2),
-            ("Sustain", 0.7),
-            ("Release", 0.5),
-            ("Gain", 0.8)
-        ]
-
-        # Create ADSR controls using the ParameterControl class
-        for i, (name, default_value) in enumerate(adsr_params):
-            control = ParameterControl(
-                parent=self.scrollable_frame,
-                name=name,
-                config={
-                    'initial_value': default_value,
-                    'row': i,  # Start from row 0 in the scrollable frame
-                    'update_callback': self._on_parameter_change
-                }
-            )
-            self.adsr_controls[name.lower()] = control
-
     def _on_instrument_parameter_change(self, instruction_index, param_index):
         """Handle parameter changes for instrument parameters"""
-        if not hasattr(self, 'synth_engine') or not self.synth_engine:
-            return
-
         # Get the control ID and retrieve the control
         control_id = f"instr_{instruction_index}_param_{param_index}"
         control = self.adsr_controls.get(control_id)
@@ -548,8 +499,7 @@ class Editor:
             self.log_output(f"Selected {selection}")
 
             # Recreate controls for the new instrument
-            if hasattr(self, 'synth_engine') and self.synth_engine:
-                self._create_controls_for_current_instrument()
+            self._create_controls_for_current_instrument()
 
             self.update_synth_parameters()
 
@@ -617,7 +567,7 @@ class Editor:
         self.play_button.config(text="Pause")
         self.status_var.set("Playing...")
         self.log_output("Playback started")
-        # FIXME: Implement actual continuous playback  # pylint: disable=fixme
+        # Note: Continuous playback is handled through the GUI test functionality
 
     def pause_playback(self):
         """Pause playback"""

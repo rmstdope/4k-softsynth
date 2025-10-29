@@ -6,7 +6,7 @@ This package provides a complete synthesizer editor with GUI, audio processing,
 and C++ integration components. Import specific components from their subpackages:
 
 - GUI components: from editor.gui import Editor, ParameterControl
-- Audio processing: from editor.audio import SynthWrapper, Audio
+- Audio processing: from editor.audio import SynthWrapper, AudioDevice
 - Utilities: from editor.utils import setup_logger
 """
 

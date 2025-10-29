@@ -47,7 +47,7 @@ editor/
 ```python
 # ✅ Correct - subpackage imports (preferred)
 from editor.gui import Editor, ParameterControl
-from editor.audio import SynthWrapper, Audio
+from editor.audio import SynthWrapper, AudioDevice
 from editor.utils import setup_logger
 
 # ✅ Also correct - direct imports when needed
@@ -94,7 +94,7 @@ When modifying entry points:
 #### Code Modifications
 
 1. **Test imports first**: Verify absolute imports work correctly
-2. **Run pylint**: Check code quality with `pylint src/editor/` and fix issues
+2. **Run pylint**: Check code quality with `pylint src/editor/` and fix issues. Try to really fix all issues, not disabling warnings.
 3. **Run tests**: Use `pytest tests/` to verify functionality
 4. **Check entry points**: Test all execution methods
 5. **Verify debugging**: Ensure VS Code configurations work

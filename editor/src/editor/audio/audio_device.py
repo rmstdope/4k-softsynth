@@ -5,21 +5,14 @@ Handles audio device initialization and sample playback
 
 import logging
 import threading
-import time
 from typing import Optional, Callable
 
 import numpy as np
-
-try:
-    import pyaudio  # pylint: disable=import-error
-    PYAUDIO_AVAILABLE = True
-except ImportError:
-    PYAUDIO_AVAILABLE = False
-    print("Warning: PyAudio not available. Audio playback will be simulated.")
+import pyaudio
 
 
 # pylint: disable=too-many-instance-attributes
-class Audio:
+class AudioDevice:
     """Audio device manager for real-time audio playback"""
 
     def __init__(self, sample_rate: int = 44100, channels: int = 1,
@@ -40,11 +33,11 @@ class Audio:
         # Audio format mapping
         if format_bits == 16:
             self.np_format = np.int16
-            self.pa_format = pyaudio.paInt16 if PYAUDIO_AVAILABLE else None
+            self.pa_format = pyaudio.paInt16
             self.sample_max = 32767.0
         else:  # 32-bit float
             self.np_format = np.float32
-            self.pa_format = pyaudio.paFloat32 if PYAUDIO_AVAILABLE else None
+            self.pa_format = pyaudio.paFloat32
             self.sample_max = 1.0
 
         self.pyaudio_instance = None
@@ -69,11 +62,6 @@ class Audio:
         Returns:
             True if initialization successful, False otherwise
         """
-        if not PYAUDIO_AVAILABLE:
-            self.logger.warning("PyAudio not available, running in simulation mode")
-            self.is_initialized = True  # Allow simulation mode
-            return True
-
         try:
             self.pyaudio_instance = pyaudio.PyAudio()
 
@@ -146,16 +134,6 @@ class Audio:
 
     def _play_samples_blocking(self, samples: np.ndarray) -> bool:
         """Play samples in blocking mode"""
-        if not PYAUDIO_AVAILABLE:
-            # Simulate playback
-            duration = len(samples) / self.sample_rate
-            self.logger.info("Simulating audio playback: %.3fs, %s samples",
-                           duration, len(samples))
-            time.sleep(duration)
-            if self._playback_callback:
-                self._playback_callback()
-            return True
-
         try:
             self.is_playing = True
 
@@ -227,10 +205,10 @@ class Audio:
             'format_bits': self.format_bits,
             'is_initialized': self.is_initialized,
             'is_playing': self.is_playing,
-            'pyaudio_available': PYAUDIO_AVAILABLE
+            'pyaudio_available': True
         }
 
-        if PYAUDIO_AVAILABLE and self.pyaudio_instance:
+        if self.pyaudio_instance:
             try:
                 device_info = self.pyaudio_instance.get_default_output_device_info()
                 info.update({
@@ -306,5 +284,5 @@ def play_audio(samples: np.ndarray, sample_rate: int = 44100,
     Returns:
         True if playback successful, False otherwise
     """
-    with Audio(sample_rate=sample_rate) as audio:
+    with AudioDevice(sample_rate=sample_rate) as audio:
         return audio.play_samples(samples, blocking=blocking)
