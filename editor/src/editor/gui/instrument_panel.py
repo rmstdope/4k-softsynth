@@ -99,7 +99,7 @@ class InstrumentPanel:
                 # Get parameter ranges and types for this instruction
                 param_ranges = instrument.get_instruction_parameter_ranges(instr_idx)
                 param_types = instrument.get_instruction_parameter_types(instr_idx)
-                
+
                 # Get string-based parameter values for enum parameters
                 params_as_strings = instrument.get_instruction_parameters_as_strings(instr_idx)
 
@@ -151,94 +151,130 @@ class InstrumentPanel:
         """Create a single parameter control.
 
         Args:
-            param_info: Dict containing 'instr_idx', 'param_idx', 'param_name',
-                       'param_value', 'param_ranges', 'param_types', 'row'
+            param_info: Dict containing parameter information
         """
-        instr_idx = param_info['instr_idx']
-        param_idx = param_info['param_idx']
-        param_name = param_info['param_name']
-        param_value = param_info['param_value']
-        param_ranges = param_info['param_ranges']
-        param_types = param_info['param_types']
-        params_as_strings = param_info['params_as_strings']
-        row = param_info['row']
+        # Extract parameter information
+        control_id = f"instr_{param_info['instr_idx']}_param_{param_info['param_idx']}"
+        min_val, max_val, step_val = self._get_parameter_range(param_info)
+        param_type = self._get_parameter_type(param_info)
+        type_name = self._get_type_name(param_type)
+        enum_options = self._get_enum_options(param_info, param_type)
+        initial_value = self._get_initial_value(param_info, param_type)
 
-        # Create unique control ID for this parameter
-        control_id = f"instr_{instr_idx}_param_{param_idx}"
-
-        # Get min/max/step values for this parameter (default to 0-128, step=1 if not available)
-        min_val, max_val, step_val = (0, 128, 1)
-        if param_idx < len(param_ranges):
-            param_range = param_ranges[param_idx]
-            min_val = param_range.min_value
-            max_val = param_range.max_value
-            step_val = param_range.step
-
-        # Get parameter type (default to UINT8 if not available)
-        param_type = 0  # UINT8
-        if param_idx < len(param_types):
-            param_type = param_types[param_idx]
-
-        # Determine type name for display
-        type_name = "uint8"
-        if synth_engine and param_type == synth_engine.PARAM_TYPE_UINT16:
-            type_name = "uint16"
-        elif synth_engine and param_type == synth_engine.PARAM_TYPE_ENUM:
-            type_name = "enum"
-
-        # Get enum options if this is an enum parameter
-        enum_options = []
-        if synth_engine and param_type == synth_engine.PARAM_TYPE_ENUM:
-            try:
-                instrument = self._get_current_instrument()
-                if instrument:
-                    param_enums = instrument.get_instruction_parameter_enums(instr_idx)
-                    if param_idx < len(param_enums) and param_enums[param_idx]:
-                        enum_obj = param_enums[param_idx]
-                        # Get all valid enum values (values may not be consecutive)
-                        consecutive_unknowns = 0
-                        for i in range(256):  # Maximum uint8_t values
-                            try:
-                                name = enum_obj.get_name(i)
-                                if name and name != "UNKNOWN":
-                                    enum_options.append(name)
-                                    consecutive_unknowns = 0  # Reset counter
-                                else:
-                                    consecutive_unknowns += 1
-                                    # Stop if we've seen many consecutive unknowns (likely end of valid range)
-                                    if consecutive_unknowns > 50:
-                                        break
-                            except (RuntimeError, IndexError):
-                                consecutive_unknowns += 1
-                                if consecutive_unknowns > 50:
-                                    break
-            except Exception as e:
-                if hasattr(self.main_editor, 'logger'):
-                    self.main_editor.logger.warning("Error getting enum options: %s", e)
-
-        # For enum parameters, use the string value, otherwise use numeric value
-        initial_value = param_value
-        if synth_engine and param_type == synth_engine.PARAM_TYPE_ENUM and param_idx < len(params_as_strings):
-            initial_value = params_as_strings[param_idx]
-
+        # Create the parameter control
         control = ParameterControl(
             parent=self.scrollable_frame,
-            name=param_name,
+            name=param_info['param_name'],
             config={
                 'initial_value': initial_value,
-                'row': row,
+                'row': param_info['row'],
                 'min_value': min_val,
                 'max_value': max_val,
                 'step_value': step_val,
                 'param_type': param_type,
                 'type_name': type_name,
                 'enum_options': enum_options,
-                'update_callback': self._create_parameter_callback(instr_idx, param_idx)
+                'update_callback': self._create_parameter_callback(
+                    param_info['instr_idx'], param_info['param_idx'])
             }
         )
 
         # Store control with unique ID
         self.adsr_controls[control_id] = control
+
+    def _get_parameter_range(self, param_info):
+        """Get parameter range values."""
+        min_val, max_val, step_val = (0, 128, 1)  # defaults
+        param_ranges = param_info['param_ranges']
+        param_idx = param_info['param_idx']
+        
+        if param_idx < len(param_ranges):
+            param_range = param_ranges[param_idx]
+            min_val = param_range.min_value
+            max_val = param_range.max_value
+            step_val = param_range.step
+        
+        return min_val, max_val, step_val
+
+    def _get_parameter_type(self, param_info):
+        """Get parameter type."""
+        param_type = 0  # UINT8 default
+        param_types = param_info['param_types']
+        param_idx = param_info['param_idx']
+        
+        if param_idx < len(param_types):
+            param_type = param_types[param_idx]
+        
+        return param_type
+
+    def _get_type_name(self, param_type):
+        """Get type name for display."""
+        type_name = "uint8"
+        if synth_engine and param_type == synth_engine.PARAM_TYPE_UINT16:  # pylint: disable=c-extension-no-member
+            type_name = "uint16"
+        elif synth_engine and param_type == synth_engine.PARAM_TYPE_ENUM:  # pylint: disable=c-extension-no-member
+            type_name = "enum"
+        return type_name
+
+    def _get_enum_options(self, param_info, param_type):
+        """Get enum options if this is an enum parameter."""
+        enum_options = []
+        if not (synth_engine and param_type == synth_engine.PARAM_TYPE_ENUM):  # pylint: disable=c-extension-no-member
+            return enum_options
+
+        try:
+            instrument = self._get_current_instrument()
+            if not instrument:
+                return enum_options
+
+            param_enums = instrument.get_instruction_parameter_enums(param_info['instr_idx'])
+            param_idx = param_info['param_idx']
+            
+            if param_idx >= len(param_enums) or not param_enums[param_idx]:
+                return enum_options
+
+            enum_obj = param_enums[param_idx]
+            enum_options = self._extract_enum_names(enum_obj)
+            
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            if hasattr(self.main_editor, 'logger'):
+                self.main_editor.logger.warning("Error getting enum options: %s", e)
+
+        return enum_options
+
+    def _extract_enum_names(self, enum_obj):
+        """Extract enum names from enum object."""
+        enum_options = []
+        consecutive_unknowns = 0
+        
+        for i in range(256):  # Maximum uint8_t values
+            try:
+                name = enum_obj.get_name(i)
+                if name and name != "UNKNOWN":
+                    enum_options.append(name)
+                    consecutive_unknowns = 0  # Reset counter
+                else:
+                    consecutive_unknowns += 1
+                    # Stop if we've seen many consecutive unknowns
+                    if consecutive_unknowns > 50:
+                        break
+            except (RuntimeError, IndexError):
+                consecutive_unknowns += 1
+                if consecutive_unknowns > 50:
+                    break
+        
+        return enum_options
+
+    def _get_initial_value(self, param_info, param_type):
+        """Get initial value for parameter."""
+        initial_value = param_info['param_value']
+        
+        # For enum parameters, use the string value
+        if (synth_engine and param_type == synth_engine.PARAM_TYPE_ENUM and  # pylint: disable=c-extension-no-member
+                param_info['param_idx'] < len(param_info['params_as_strings'])):
+            initial_value = param_info['params_as_strings'][param_info['param_idx']]
+        
+        return initial_value
 
     def _update_scroll_region(self):
         """Update the canvas scroll region."""
@@ -321,7 +357,8 @@ class InstrumentPanel:
 
     def _create_parameter_callback(self, instruction_index, param_index):
         """Create a callback function for a specific parameter."""
-        return lambda: self._on_instrument_parameter_change(instruction_index, param_index)
+        return lambda: self._on_instrument_parameter_change(
+            instruction_index, param_index)
 
     def _create_scrollable_frame(self, parent):
         """Create a scrollable frame with canvas and scrollbar."""
