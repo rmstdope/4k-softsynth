@@ -741,7 +741,7 @@ private:
                                EnumValue(OSCILLATOR_NOISE + OSCILLATOR_LFO, "Noise+LFO")})};
         case OPERATION_ID:
             return {
-                ParameterEnum({    // Operand - enum (using operator values from defines.h)
+                ParameterEnum({// Operand - enum (using operator values from defines.h)
                                EnumValue(OPERATOR_MUL, "Multiply"),
                                EnumValue(OPERATOR_MULP, "Multiply and Pop")})};
         default:
