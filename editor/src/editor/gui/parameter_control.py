@@ -17,11 +17,12 @@ class ParameterControl:
         Args:
             parent: Parent tkinter widget
             name: Display name for the parameter
-            config: Dict with 'initial_value', 'row', and optional 'update_callback'
+            config: Dict with 'initial_value', 'row', optional 'update_callback', 
+                   optional 'min_value', and optional 'max_value'
         """
         self.name = name
-        self.min_val = 0
-        self.max_val = 128
+        self.min_val = config.get('min_value', 0)
+        self.max_val = config.get('max_value', 128)
         self.update_callback: Optional[Callable[[], None]] = config.get('update_callback')
 
         # Create the control widgets

@@ -69,18 +69,9 @@ class InstrumentPanel:
         # Clear existing controls
         self._clear_instrument_controls()
 
-        # Get current instrument
-        if not hasattr(self.main_editor, 'synth') or not self.main_editor.synth:
-            self._show_no_instrument_message()
-            return
-
-        if not self.main_editor.synth.has_instruments():
-            self._show_no_instrument_message()
-            return
-
-        instrument = self.main_editor.synth.get_instrument(self.main_editor.current_instrument)
+        # Get current instrument and validate
+        instrument = self._get_current_instrument()
         if not instrument:
-            self._show_no_instrument_message()
             return
 
         instructions = instrument.get_instructions()
@@ -97,34 +88,93 @@ class InstrumentPanel:
 
             # Add section header for this instruction
             if param_names:  # Only show header if there are parameters to display
-                header_label = ttk.Label(self.scrollable_frame,
-                                       text=f"🎛️ {instr_name}",
-                                       font=('TkDefaultFont', 9, 'bold'))
-                header_label.grid(row=row, column=0, columnspan=3,
-                                 sticky=tk.W, pady=(10, 5))
+                self._create_instruction_header(instr_name, row)
                 row += 1
+
+                # Get parameter ranges for this instruction
+                param_ranges = instrument.get_instruction_parameter_ranges(instr_idx)
 
                 # Create parameter controls
                 for param_idx, (param_name, param_value) in enumerate(
                     zip(param_names, param_values)):
-                    # Create unique control ID for this parameter
-                    control_id = f"instr_{instr_idx}_param_{param_idx}"
-
-                    control = ParameterControl(
-                        parent=self.scrollable_frame,
-                        name=param_name,
-                        config={
-                            'initial_value': param_value,
-                            'row': row,
-                            'update_callback': self._create_parameter_callback(instr_idx, param_idx)
-                        }
-                    )
-
-                    # Store control with unique ID
-                    self.adsr_controls[control_id] = control
+                    param_info = {
+                        'instr_idx': instr_idx,
+                        'param_idx': param_idx,
+                        'param_name': param_name,
+                        'param_value': param_value,
+                        'param_ranges': param_ranges,
+                        'row': row
+                    }
+                    self._create_single_parameter_control(param_info)
                     row += 1
 
         # Update canvas scroll region
+        self._update_scroll_region()
+
+    def _get_current_instrument(self):
+        """Get and validate the current instrument."""
+        if not hasattr(self.main_editor, 'synth') or not self.main_editor.synth:
+            self._show_no_instrument_message()
+            return None
+
+        if not self.main_editor.synth.has_instruments():
+            self._show_no_instrument_message()
+            return None
+
+        instrument = self.main_editor.synth.get_instrument(self.main_editor.current_instrument)
+        if not instrument:
+            self._show_no_instrument_message()
+            return None
+
+        return instrument
+
+    def _create_instruction_header(self, instr_name, row):
+        """Create a header label for an instruction section."""
+        header_label = ttk.Label(self.scrollable_frame,
+                               text=f"🎛️ {instr_name}",
+                               font=('TkDefaultFont', 9, 'bold'))
+        header_label.grid(row=row, column=0, columnspan=3,
+                         sticky=tk.W, pady=(10, 5))
+
+    def _create_single_parameter_control(self, param_info):
+        """Create a single parameter control.
+
+        Args:
+            param_info: Dict containing 'instr_idx', 'param_idx', 'param_name',
+                       'param_value', 'param_ranges', 'row'
+        """
+        instr_idx = param_info['instr_idx']
+        param_idx = param_info['param_idx']
+        param_name = param_info['param_name']
+        param_value = param_info['param_value']
+        param_ranges = param_info['param_ranges']
+        row = param_info['row']
+
+        # Create unique control ID for this parameter
+        control_id = f"instr_{instr_idx}_param_{param_idx}"
+
+        # Get min/max values for this parameter (default to 0-128 if not available)
+        min_val, max_val = (0, 128)
+        if param_idx < len(param_ranges):
+            min_val, max_val = param_ranges[param_idx]
+
+        control = ParameterControl(
+            parent=self.scrollable_frame,
+            name=param_name,
+            config={
+                'initial_value': param_value,
+                'row': row,
+                'min_value': min_val,
+                'max_value': max_val,
+                'update_callback': self._create_parameter_callback(instr_idx, param_idx)
+            }
+        )
+
+        # Store control with unique ID
+        self.adsr_controls[control_id] = control
+
+    def _update_scroll_region(self):
+        """Update the canvas scroll region."""
         self.scrollable_frame.update_idletasks()
         self.container_frame.canvas.configure(scrollregion=self.container_frame.canvas.bbox("all"))
 

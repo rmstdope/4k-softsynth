@@ -74,6 +74,17 @@ public:
         return get_parameter_names_for_instruction(instruction_id);
     }
 
+    std::vector<std::pair<int, int>> get_instruction_parameter_ranges(uint32_t instruction_index) const
+    {
+        if (instruction_index >= instructions_.size())
+        {
+            return std::vector<std::pair<int, int>>();
+        }
+
+        int instruction_id = instructions_[instruction_index];
+        return get_parameter_ranges_for_instruction(instruction_id);
+    }
+
     std::string get_instruction_name(uint32_t instruction_index) const
     {
         if (instruction_index >= instructions_.size())
@@ -276,6 +287,38 @@ private:
             return {};
         }
     }
+
+    std::vector<std::pair<int, int>> get_parameter_ranges_for_instruction(int instruction_id) const
+    {
+        switch (instruction_id)
+        {
+        case ENVELOPE_ID:
+            // Attack, Decay, Sustain, Release, Gain
+            return {{0, 128}, {0, 128}, {0, 128}, {0, 128}, {0, 128}};
+        case OSCILLATOR_ID:
+            // Transpose, Detune, Phase, Gates, Color, Shape, Gain, Type
+            return {{0, 128}, {0, 128}, {0, 128}, {0, 128}, {0, 128}, {0, 128}, {0, 128}, {1, 8}};
+        case STOREVAL_ID:
+            // Amount, Destination1, Destination2
+            return {{0, 128}, {0, 255}, {0, 255}};
+        case OPERATION_ID:
+            // Operand
+            return {{1, 1}};
+        case OUTPUT_ID:
+            // Gain
+            return {{0, 128}};
+        case FILTER_ID:
+            // Cutoff
+            return {{0, 128}};
+        case PANNING_ID:
+            // Position (-64 to +63, but we'll map 0-127)
+            return {{0, 128}};
+        case ACCUMULATE_ID:
+            return {}; // No parameters
+        default:
+            return {};
+        }
+    }
 };
 
 class SynthEngine
@@ -385,6 +428,16 @@ public:
         return std::vector<uint8_t>();
     }
 
+    std::vector<std::pair<int, int>> get_instrument_instruction_parameter_ranges(uint32_t instrument_num, uint32_t instruction_index)
+    {
+        Instrument *instrument = get_instrument(instrument_num);
+        if (instrument)
+        {
+            return instrument->get_instruction_parameter_ranges(instruction_index);
+        }
+        return std::vector<std::pair<int, int>>();
+    }
+
     bool update_instrument_parameter(uint32_t instrument_num, uint32_t instruction_index, uint32_t param_index, uint8_t value)
     {
         Instrument *instrument = get_instrument(instrument_num);
@@ -431,6 +484,7 @@ PYBIND11_MODULE(synth_engine, m)
         .def("get_instructions", &Instrument::get_instructions)
         .def("get_instruction_parameters", &Instrument::get_instruction_parameters, py::arg("instruction_index"))
         .def("get_instruction_parameter_names", &Instrument::get_instruction_parameter_names, py::arg("instruction_index"))
+        .def("get_instruction_parameter_ranges", &Instrument::get_instruction_parameter_ranges, py::arg("instruction_index"))
         .def("get_instruction_name", &Instrument::get_instruction_name, py::arg("instruction_index"))
         .def("update_parameter", &Instrument::update_parameter, py::arg("instruction_index"), py::arg("param_index"), py::arg("value"))
         .def("render_note", &Instrument::render_note, py::arg("note_num"));
@@ -445,6 +499,7 @@ PYBIND11_MODULE(synth_engine, m)
         .def("get_num_instruments", &SynthEngine::get_num_instruments)
         .def("get_instrument_instructions", &SynthEngine::get_instrument_instructions, py::arg("instrument_num"))
         .def("get_instrument_instruction_parameters", &SynthEngine::get_instrument_instruction_parameters, py::arg("instrument_num"), py::arg("instruction_index"))
+        .def("get_instrument_instruction_parameter_ranges", &SynthEngine::get_instrument_instruction_parameter_ranges, py::arg("instrument_num"), py::arg("instruction_index"))
         .def("update_instrument_parameter", &SynthEngine::update_instrument_parameter, py::arg("instrument_num"), py::arg("instruction_index"), py::arg("param_index"), py::arg("value"));
 
     // Expose constants from defines.h
