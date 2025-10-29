@@ -89,7 +89,7 @@ class InstrumentPanel:
         for instr_idx, _ in enumerate(instructions):
             instr_name = instrument.get_instruction_name(instr_idx)
             param_names = instrument.get_instruction_parameter_names(instr_idx)
-            param_values = instrument.get_instruction_parameters(instr_idx)
+            param_values = instrument.get_instruction_parameters_full(instr_idx)
 
             # Add section header for this instruction
             if param_names:  # Only show header if there are parameters to display
@@ -161,10 +161,13 @@ class InstrumentPanel:
         # Create unique control ID for this parameter
         control_id = f"instr_{instr_idx}_param_{param_idx}"
 
-        # Get min/max values for this parameter (default to 0-128 if not available)
-        min_val, max_val = (0, 128)
+        # Get min/max/step values for this parameter (default to 0-128, step=1 if not available)
+        min_val, max_val, step_val = (0, 128, 1)
         if param_idx < len(param_ranges):
-            min_val, max_val = param_ranges[param_idx]
+            param_range = param_ranges[param_idx]
+            min_val = param_range.min_value
+            max_val = param_range.max_value
+            step_val = param_range.step
 
         # Get parameter type (default to UINT8 if not available)
         param_type = 0  # UINT8
@@ -184,6 +187,7 @@ class InstrumentPanel:
                 'row': row,
                 'min_value': min_val,
                 'max_value': max_val,
+                'step_value': step_val,
                 'param_type': param_type,
                 'type_name': type_name,
                 'update_callback': self._create_parameter_callback(instr_idx, param_idx)

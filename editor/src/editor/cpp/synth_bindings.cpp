@@ -21,6 +21,17 @@ enum class ParameterType : uint8_t
     UINT16 = 1
 };
 
+// Parameter range information including step
+struct ParameterRange
+{
+    int min_value;
+    int max_value;
+    int step;
+
+    ParameterRange(int min_val, int max_val, int step_val = 1)
+        : min_value(min_val), max_value(max_val), step(step_val) {}
+};
+
 // Debug logging macro
 #ifdef DEBUG
 #define DEBUG_LOG(msg) std::cout << "[DEBUG] SynthEngine: " << msg << std::endl
@@ -61,13 +72,81 @@ public:
         if (instruction_index < parameters_.size())
         {
             std::vector<uint8_t> values;
-            for (uint8_t *ptr : parameters_[instruction_index])
+            int instruction_id = instructions_[instruction_index];
+            std::vector<uint8_t> param_types = get_parameter_types_for_instruction(instruction_id);
+
+            size_t ptr_idx = 0;
+
+            for (size_t i = 0; i < param_types.size() && ptr_idx < parameters_[instruction_index].size(); ++i)
             {
-                values.push_back(*ptr); // Dereference pointer to get actual value
+                if (param_types[i] == static_cast<uint8_t>(ParameterType::UINT8))
+                {
+                    // Single uint8_t parameter
+                    values.push_back(*parameters_[instruction_index][ptr_idx]);
+                    ptr_idx++;
+                }
+                else if (param_types[i] == static_cast<uint8_t>(ParameterType::UINT16))
+                {
+                    // uint16_t parameter stored as two consecutive uint8_t values (little-endian)
+                    if (ptr_idx + 1 < parameters_[instruction_index].size())
+                    {
+                        uint16_t value = *parameters_[instruction_index][ptr_idx] |
+                                         (*parameters_[instruction_index][ptr_idx + 1] << 8);
+                        // For Python interface, we'll return the low byte for compatibility
+                        // The actual uint16 value will be handled by a separate method
+                        values.push_back(value & 0xFF);
+                        ptr_idx += 2;
+                    }
+                    else
+                    {
+                        values.push_back(0);
+                        ptr_idx++;
+                    }
+                }
             }
             return values;
         }
         return std::vector<uint8_t>();
+    }
+
+    std::vector<uint32_t> get_instruction_parameters_full(uint32_t instruction_index) const
+    {
+        if (instruction_index < parameters_.size())
+        {
+            std::vector<uint32_t> values;
+            int instruction_id = instructions_[instruction_index];
+            std::vector<uint8_t> param_types = get_parameter_types_for_instruction(instruction_id);
+
+            size_t ptr_idx = 0;
+
+            for (size_t i = 0; i < param_types.size() && ptr_idx < parameters_[instruction_index].size(); ++i)
+            {
+                if (param_types[i] == static_cast<uint8_t>(ParameterType::UINT8))
+                {
+                    // Single uint8_t parameter
+                    values.push_back(static_cast<uint32_t>(*parameters_[instruction_index][ptr_idx]));
+                    ptr_idx++;
+                }
+                else if (param_types[i] == static_cast<uint8_t>(ParameterType::UINT16))
+                {
+                    // uint16_t parameter stored as two consecutive uint8_t values (little-endian)
+                    if (ptr_idx < parameters_[instruction_index].size())
+                    {
+                        uint8_t *param_ptr = parameters_[instruction_index][ptr_idx];
+                        uint16_t value = param_ptr[0] | (param_ptr[1] << 8);
+                        values.push_back(static_cast<uint32_t>(value));
+                        ptr_idx++;
+                    }
+                    else
+                    {
+                        values.push_back(0);
+                        ptr_idx++;
+                    }
+                }
+            }
+            return values;
+        }
+        return std::vector<uint32_t>();
     }
 
     std::vector<std::string> get_instruction_parameter_names(uint32_t instruction_index) const
@@ -81,11 +160,11 @@ public:
         return get_parameter_names_for_instruction(instruction_id);
     }
 
-    std::vector<std::pair<int, int>> get_instruction_parameter_ranges(uint32_t instruction_index) const
+    std::vector<ParameterRange> get_instruction_parameter_ranges(uint32_t instruction_index) const
     {
         if (instruction_index >= instructions_.size())
         {
-            return std::vector<std::pair<int, int>>();
+            return std::vector<ParameterRange>();
         }
 
         int instruction_id = instructions_[instruction_index];
@@ -114,13 +193,53 @@ public:
         return get_instruction_name_by_id(instruction_id);
     }
 
-    void update_parameter(uint32_t instruction_index, uint32_t param_index, uint8_t value)
+    void update_parameter(uint32_t instruction_index, uint32_t param_index, uint32_t value)
     {
-        if (instruction_index < parameters_.size() && param_index < parameters_[instruction_index].size())
+        if (instruction_index < parameters_.size())
         {
-            *(parameters_[instruction_index][param_index]) = value; // Dereference pointer to update actual parameter
-            DEBUG_LOG("Updated Instrument " << id_ << " instruction " << instruction_index
-                                            << " param " << param_index << " to " << static_cast<int>(value));
+            int instruction_id = instructions_[instruction_index];
+            std::vector<uint8_t> param_types = get_parameter_types_for_instruction(instruction_id);
+
+            if (param_index < param_types.size())
+            {
+                // Calculate the memory pointer index based on parameter types
+                size_t ptr_idx = 0;
+                for (size_t i = 0; i < param_index; ++i)
+                {
+                    if (param_types[i] == static_cast<uint8_t>(ParameterType::UINT16))
+                    {
+                        ptr_idx += 2; // uint16 takes 2 bytes
+                    }
+                    else
+                    {
+                        ptr_idx += 1; // uint8 takes 1 byte
+                    }
+                }
+
+                if (param_types[param_index] == static_cast<uint8_t>(ParameterType::UINT8))
+                {
+                    // Update uint8_t parameter
+                    if (ptr_idx < parameters_[instruction_index].size())
+                    {
+                        *(parameters_[instruction_index][ptr_idx]) = static_cast<uint8_t>(value & 0xFF);
+                        DEBUG_LOG("Updated Instrument " << id_ << " instruction " << instruction_index
+                                                        << " param " << param_index << " (uint8) to " << static_cast<int>(value & 0xFF));
+                    }
+                }
+                else if (param_types[param_index] == static_cast<uint8_t>(ParameterType::UINT16))
+                {
+                    // Update uint16_t parameter (stored as two consecutive uint8_t values, little-endian)
+                    if (ptr_idx < parameters_[instruction_index].size())
+                    {
+                        uint16_t value16 = static_cast<uint16_t>(value & 0xFFFF);
+                        uint8_t *param_ptr = parameters_[instruction_index][ptr_idx];
+                        param_ptr[0] = static_cast<uint8_t>(value16 & 0xFF);        // Low byte
+                        param_ptr[1] = static_cast<uint8_t>((value16 >> 8) & 0xFF); // High byte
+                        DEBUG_LOG("Updated Instrument " << id_ << " instruction " << instruction_index
+                                                        << " param " << param_index << " (uint16) to " << static_cast<int>(value16));
+                    }
+                }
+            }
         }
     }
 
@@ -221,16 +340,31 @@ private:
         // Load parameter pointers for our instrument
         for (size_t i = 0; i < instructions_.size(); ++i)
         {
-            uint32_t num_params = get_instruction_param_count(instructions_[i]);
+            int instruction_id = instructions_[i];
+            std::vector<uint8_t> param_types = get_parameter_types_for_instruction(instruction_id);
             std::vector<uint8_t *> instruction_param_ptrs;
 
-            for (uint32_t j = 0; j < num_params; ++j)
+            uint32_t memory_offset = 0;
+            for (size_t j = 0; j < param_types.size(); ++j)
             {
-                instruction_param_ptrs.push_back(&param_ptr[j]); // Store pointer to actual parameter
+                instruction_param_ptrs.push_back(&param_ptr[memory_offset]);
+
+                if (param_types[j] == static_cast<uint8_t>(ParameterType::UINT16))
+                {
+                    memory_offset += 2; // uint16 takes 2 bytes
+                }
+                else
+                {
+                    memory_offset += 1; // uint8 takes 1 byte
+                }
             }
 
             parameters_.push_back(instruction_param_ptrs);
-            param_ptr += num_params;
+
+            // Move param_ptr by the total memory used by this instruction
+            // This should match the original memory layout from the ARM64 assembly
+            uint32_t memory_size = get_instruction_memory_size(instruction_id);
+            param_ptr += memory_size;
         }
     }
 
@@ -243,7 +377,7 @@ private:
         case OSCILLATOR_ID:
             return 8;
         case STOREVAL_ID:
-            return 3;
+            return 2; // Changed from 3 to 2: Amount + merged Destination
         case OPERATION_ID:
             return 1;
         case OUTPUT_ID:
@@ -251,6 +385,28 @@ private:
         case FILTER_ID:
         case PANNING_ID:
             return 1; // Assuming 1 parameter each
+        default:
+            return 0;
+        }
+    }
+
+    uint32_t get_instruction_memory_size(int instruction_id) const
+    {
+        switch (instruction_id)
+        {
+        case ENVELOPE_ID:
+            return 5; // 5 uint8 parameters
+        case OSCILLATOR_ID:
+            return 8; // 8 uint8 parameters
+        case STOREVAL_ID:
+            return 3; // Amount (1 byte) + Destination (2 bytes) = 3 bytes total
+        case OPERATION_ID:
+            return 1; // 1 uint8 parameter
+        case OUTPUT_ID:
+            return 1; // 1 uint8 parameter
+        case FILTER_ID:
+        case PANNING_ID:
+            return 1; // 1 uint8 parameter each
         default:
             return 0;
         }
@@ -290,7 +446,7 @@ private:
         case OSCILLATOR_ID:
             return {"Transpose", "Detune", "Phase", "Gates", "Color", "Shape", "Gain", "Type"};
         case STOREVAL_ID:
-            return {"Amount", "Destination1", "Destination2"};
+            return {"Amount", "Destination"};
         case OPERATION_ID:
             return {"Operand"};
         case OUTPUT_ID:
@@ -306,31 +462,34 @@ private:
         }
     }
 
-    std::vector<std::pair<int, int>> get_parameter_ranges_for_instruction(int instruction_id) const
+    std::vector<ParameterRange> get_parameter_ranges_for_instruction(int instruction_id) const
     {
         switch (instruction_id)
         {
         case ENVELOPE_ID:
-            // Attack, Decay, Sustain, Release, Gain
-            return {{0, 255}, {0, 255}, {0, 255}, {0, 255}, {0, 128}};
+            // Attack, Decay, Sustain, Release, Gain (all default step=1)
+            return {ParameterRange(0, 255), ParameterRange(0, 255), ParameterRange(0, 255),
+                    ParameterRange(0, 255), ParameterRange(0, 128)};
         case OSCILLATOR_ID:
-            // Transpose, Detune, Phase, Gates, Color, Shape, Gain, Type
-            return {{0, 127}, {0, 255}, {0, 255}, {0, 15}, {0, 255}, {0, 7}, {0, 128}, {0, 7}};
+            // Transpose, Detune, Phase, Gates, Color, Shape, Gain, Type (some with custom steps)
+            return {ParameterRange(0, 127), ParameterRange(0, 255), ParameterRange(0, 255),
+                    ParameterRange(0, 15), ParameterRange(0, 255), ParameterRange(0, 7),
+                    ParameterRange(0, 128), ParameterRange(0, 7)};
         case STOREVAL_ID:
-            // Amount, Destination1, Destination2
-            return {{0, 255}, {0, 255}, {0, 255}};
+            // Amount (step=1), Destination (uint16, larger step for coarse control)
+            return {ParameterRange(0, 255), ParameterRange(0, 65535, 4)};
         case OPERATION_ID:
-            // Operand
-            return {{0, 15}};
+            // Operand (step=1)
+            return {ParameterRange(0, 15)};
         case OUTPUT_ID:
-            // Gain
-            return {{0, 128}};
+            // Gain (step=1)
+            return {ParameterRange(0, 128)};
         case FILTER_ID:
-            // Cutoff
-            return {{0, 255}};
+            // Cutoff (step=1)
+            return {ParameterRange(0, 255)};
         case PANNING_ID:
-            // Position (-64 to +63, but we'll map 0-127)
-            return {{0, 127}};
+            // Position (-64 to +63, but we'll map 0-127, step=1)
+            return {ParameterRange(0, 127)};
         case ACCUMULATE_ID:
             return {}; // No parameters
         default:
@@ -360,10 +519,9 @@ private:
                     static_cast<uint8_t>(ParameterType::UINT8),
                     static_cast<uint8_t>(ParameterType::UINT8)};
         case STOREVAL_ID:
-            // Amount, Destination1, Destination2 - all uint8_t for now
+            // Amount (uint8), Destination (uint16)
             return {static_cast<uint8_t>(ParameterType::UINT8),
-                    static_cast<uint8_t>(ParameterType::UINT8),
-                    static_cast<uint8_t>(ParameterType::UINT8)};
+                    static_cast<uint8_t>(ParameterType::UINT16)};
         case OPERATION_ID:
             // Operand - uint8_t for now
             return {static_cast<uint8_t>(ParameterType::UINT8)};
@@ -491,14 +649,24 @@ public:
         return std::vector<uint8_t>();
     }
 
-    std::vector<std::pair<int, int>> get_instrument_instruction_parameter_ranges(uint32_t instrument_num, uint32_t instruction_index)
+    std::vector<uint32_t> get_instrument_instruction_parameters_full(uint32_t instrument_num, uint32_t instruction_index)
+    {
+        Instrument *instrument = get_instrument(instrument_num);
+        if (instrument)
+        {
+            return instrument->get_instruction_parameters_full(instruction_index);
+        }
+        return std::vector<uint32_t>();
+    }
+
+    std::vector<ParameterRange> get_instrument_instruction_parameter_ranges(uint32_t instrument_num, uint32_t instruction_index)
     {
         Instrument *instrument = get_instrument(instrument_num);
         if (instrument)
         {
             return instrument->get_instruction_parameter_ranges(instruction_index);
         }
-        return std::vector<std::pair<int, int>>();
+        return std::vector<ParameterRange>();
     }
 
     std::vector<uint8_t> get_instrument_instruction_parameter_types(uint32_t instrument_num, uint32_t instruction_index)
@@ -511,7 +679,7 @@ public:
         return std::vector<uint8_t>();
     }
 
-    bool update_instrument_parameter(uint32_t instrument_num, uint32_t instruction_index, uint32_t param_index, uint8_t value)
+    bool update_instrument_parameter(uint32_t instrument_num, uint32_t instruction_index, uint32_t param_index, uint32_t value)
     {
         Instrument *instrument = get_instrument(instrument_num);
         if (instrument)
@@ -552,10 +720,22 @@ PYBIND11_MODULE(synth_engine, m)
 {
     m.doc() = "4K Softsynth Python bindings - ARM64 Assembly Interface";
 
+    // Expose ParameterRange struct
+    py::class_<ParameterRange>(m, "ParameterRange")
+        .def(py::init<int, int, int>(), py::arg("min_value"), py::arg("max_value"), py::arg("step") = 1)
+        .def_readwrite("min_value", &ParameterRange::min_value)
+        .def_readwrite("max_value", &ParameterRange::max_value)
+        .def_readwrite("step", &ParameterRange::step)
+        .def("__repr__", [](const ParameterRange &pr)
+             { return "ParameterRange(min=" + std::to_string(pr.min_value) +
+                      ", max=" + std::to_string(pr.max_value) +
+                      ", step=" + std::to_string(pr.step) + ")"; });
+
     py::class_<Instrument>(m, "Instrument")
         .def("get_id", &Instrument::get_id)
         .def("get_instructions", &Instrument::get_instructions)
         .def("get_instruction_parameters", &Instrument::get_instruction_parameters, py::arg("instruction_index"))
+        .def("get_instruction_parameters_full", &Instrument::get_instruction_parameters_full, py::arg("instruction_index"))
         .def("get_instruction_parameter_names", &Instrument::get_instruction_parameter_names, py::arg("instruction_index"))
         .def("get_instruction_parameter_ranges", &Instrument::get_instruction_parameter_ranges, py::arg("instruction_index"))
         .def("get_instruction_parameter_types", &Instrument::get_instruction_parameter_types, py::arg("instruction_index"))
@@ -573,6 +753,7 @@ PYBIND11_MODULE(synth_engine, m)
         .def("get_num_instruments", &SynthEngine::get_num_instruments)
         .def("get_instrument_instructions", &SynthEngine::get_instrument_instructions, py::arg("instrument_num"))
         .def("get_instrument_instruction_parameters", &SynthEngine::get_instrument_instruction_parameters, py::arg("instrument_num"), py::arg("instruction_index"))
+        .def("get_instrument_instruction_parameters_full", &SynthEngine::get_instrument_instruction_parameters_full, py::arg("instrument_num"), py::arg("instruction_index"))
         .def("get_instrument_instruction_parameter_ranges", &SynthEngine::get_instrument_instruction_parameter_ranges, py::arg("instrument_num"), py::arg("instruction_index"))
         .def("get_instrument_instruction_parameter_types", &SynthEngine::get_instrument_instruction_parameter_types, py::arg("instrument_num"), py::arg("instruction_index"))
         .def("update_instrument_parameter", &SynthEngine::update_instrument_parameter, py::arg("instrument_num"), py::arg("instruction_index"), py::arg("param_index"), py::arg("value"));
