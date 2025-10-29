@@ -18,7 +18,8 @@
 enum class ParameterType : uint8_t
 {
     UINT8 = 0,
-    UINT16 = 1
+    UINT16 = 1,
+    ENUM = 2
 };
 
 // Parameter range information including step
@@ -30,6 +31,60 @@ struct ParameterRange
 
     ParameterRange(int min_val, int max_val, int step_val = 1)
         : min_value(min_val), max_value(max_val), step(step_val) {}
+};
+
+// Enum parameter value mapping
+struct EnumValue
+{
+    uint8_t value;
+    std::string name;
+
+    EnumValue(uint8_t val, const std::string &n) : value(val), name(n) {}
+};
+
+// Enum parameter definition
+struct ParameterEnum
+{
+    std::vector<EnumValue> values;
+
+    ParameterEnum(const std::vector<EnumValue> &enum_values) : values(enum_values) {}
+
+    // Get string name for uint8_t value
+    std::string get_name(uint8_t value) const
+    {
+        for (const auto &enum_val : values)
+        {
+            if (enum_val.value == value)
+            {
+                return enum_val.name;
+            }
+        }
+        return "UNKNOWN";
+    }
+
+    // Get uint8_t value for string name
+    uint8_t get_value(const std::string &name) const
+    {
+        for (const auto &enum_val : values)
+        {
+            if (enum_val.name == name)
+            {
+                return enum_val.value;
+            }
+        }
+        return 0; // Default to first value if not found
+    }
+
+    // Get all available names
+    std::vector<std::string> get_names() const
+    {
+        std::vector<std::string> names;
+        for (const auto &enum_val : values)
+        {
+            names.push_back(enum_val.name);
+        }
+        return names;
+    }
 };
 
 // Debug logging macro
@@ -143,10 +198,71 @@ public:
                         ptr_idx++;
                     }
                 }
+                else if (param_types[i] == static_cast<uint8_t>(ParameterType::ENUM))
+                {
+                    // Enum parameter stored as uint8_t value
+                    values.push_back(static_cast<uint32_t>(*parameters_[instruction_index][ptr_idx]));
+                    ptr_idx++;
+                }
             }
             return values;
         }
         return std::vector<uint32_t>();
+    }
+
+    std::vector<std::string> get_instruction_parameters_as_strings(uint32_t instruction_index) const
+    {
+        if (instruction_index < parameters_.size())
+        {
+            std::vector<std::string> values;
+            int instruction_id = instructions_[instruction_index];
+            std::vector<uint8_t> param_types = get_parameter_types_for_instruction(instruction_id);
+            std::vector<ParameterEnum> param_enums = get_parameter_enums_for_instruction(instruction_id);
+
+            size_t ptr_idx = 0;
+
+            for (size_t i = 0; i < param_types.size() && ptr_idx < parameters_[instruction_index].size(); ++i)
+            {
+                if (param_types[i] == static_cast<uint8_t>(ParameterType::UINT8))
+                {
+                    // Single uint8_t parameter - convert to string
+                    values.push_back(std::to_string(*parameters_[instruction_index][ptr_idx]));
+                    ptr_idx++;
+                }
+                else if (param_types[i] == static_cast<uint8_t>(ParameterType::UINT16))
+                {
+                    // uint16_t parameter - convert to string
+                    if (ptr_idx < parameters_[instruction_index].size())
+                    {
+                        uint8_t *param_ptr = parameters_[instruction_index][ptr_idx];
+                        uint16_t value = param_ptr[0] | (param_ptr[1] << 8);
+                        values.push_back(std::to_string(value));
+                        ptr_idx++;
+                    }
+                    else
+                    {
+                        values.push_back("0");
+                        ptr_idx++;
+                    }
+                }
+                else if (param_types[i] == static_cast<uint8_t>(ParameterType::ENUM))
+                {
+                    // Enum parameter - convert uint8_t to string name
+                    uint8_t enum_value = *parameters_[instruction_index][ptr_idx];
+                    if (i < param_enums.size() && !param_enums[i].values.empty())
+                    {
+                        values.push_back(param_enums[i].get_name(enum_value));
+                    }
+                    else
+                    {
+                        values.push_back(std::to_string(enum_value));
+                    }
+                    ptr_idx++;
+                }
+            }
+            return values;
+        }
+        return std::vector<std::string>();
     }
 
     std::vector<std::string> get_instruction_parameter_names(uint32_t instruction_index) const
@@ -180,6 +296,17 @@ public:
 
         int instruction_id = instructions_[instruction_index];
         return get_parameter_types_for_instruction(instruction_id);
+    }
+
+    std::vector<ParameterEnum> get_instruction_parameter_enums(uint32_t instruction_index) const
+    {
+        if (instruction_index >= instructions_.size())
+        {
+            return std::vector<ParameterEnum>();
+        }
+
+        int instruction_id = instructions_[instruction_index];
+        return get_parameter_enums_for_instruction(instruction_id);
     }
 
     std::string get_instruction_name(uint32_t instruction_index) const
@@ -237,6 +364,52 @@ public:
                         param_ptr[1] = static_cast<uint8_t>((value16 >> 8) & 0xFF); // High byte
                         DEBUG_LOG("Updated Instrument " << id_ << " instruction " << instruction_index
                                                         << " param " << param_index << " (uint16) to " << static_cast<int>(value16));
+                    }
+                }
+                else if (param_types[param_index] == static_cast<uint8_t>(ParameterType::ENUM))
+                {
+                    // Update enum parameter (stored as uint8_t value)
+                    if (ptr_idx < parameters_[instruction_index].size())
+                    {
+                        *(parameters_[instruction_index][ptr_idx]) = static_cast<uint8_t>(value & 0xFF);
+                        DEBUG_LOG("Updated Instrument " << id_ << " instruction " << instruction_index
+                                                        << " param " << param_index << " (enum) to " << static_cast<int>(value & 0xFF));
+                    }
+                }
+            }
+        }
+    }
+
+    void update_parameter_with_string(uint32_t instruction_index, uint32_t param_index, const std::string &value)
+    {
+        if (instruction_index < parameters_.size())
+        {
+            int instruction_id = instructions_[instruction_index];
+            std::vector<uint8_t> param_types = get_parameter_types_for_instruction(instruction_id);
+            std::vector<ParameterEnum> param_enums = get_parameter_enums_for_instruction(instruction_id);
+
+            if (param_index < param_types.size())
+            {
+                if (param_types[param_index] == static_cast<uint8_t>(ParameterType::ENUM))
+                {
+                    // For enum parameters, convert string to uint8_t value
+                    if (param_index < param_enums.size() && !param_enums[param_index].values.empty())
+                    {
+                        uint8_t enum_value = param_enums[param_index].get_value(value);
+                        update_parameter(instruction_index, param_index, enum_value);
+                    }
+                }
+                else
+                {
+                    // For non-enum parameters, convert string to number
+                    try
+                    {
+                        uint32_t numeric_value = std::stoul(value);
+                        update_parameter(instruction_index, param_index, numeric_value);
+                    }
+                    catch (const std::exception &)
+                    {
+                        // Invalid number, ignore
                     }
                 }
             }
@@ -468,12 +641,12 @@ private:
         {
         case ENVELOPE_ID:
             // Attack, Decay, Sustain, Release, Gain (all default step=1)
-            return {ParameterRange(0, 255), ParameterRange(0, 255), ParameterRange(0, 255),
-                    ParameterRange(0, 255), ParameterRange(0, 128)};
+            return {ParameterRange(0, 128), ParameterRange(0, 128), ParameterRange(0, 128),
+                    ParameterRange(0, 128), ParameterRange(0, 128)};
         case OSCILLATOR_ID:
             // Transpose, Detune, Phase, Gates, Color, Shape, Gain, Type (some with custom steps)
-            return {ParameterRange(0, 127), ParameterRange(0, 255), ParameterRange(0, 255),
-                    ParameterRange(0, 15), ParameterRange(0, 255), ParameterRange(0, 7),
+            return {ParameterRange(0, 128), ParameterRange(0, 128), ParameterRange(0, 128),
+                    ParameterRange(0, 128), ParameterRange(0, 128), ParameterRange(0, 128),
                     ParameterRange(0, 128), ParameterRange(0, 7)};
         case STOREVAL_ID:
             // Amount (step=1), Destination (uint16, larger step for coarse control)
@@ -509,7 +682,7 @@ private:
                     static_cast<uint8_t>(ParameterType::UINT8),
                     static_cast<uint8_t>(ParameterType::UINT8)};
         case OSCILLATOR_ID:
-            // Transpose, Detune, Phase, Gates, Color, Shape, Gain, Type - all uint8_t for now
+            // Transpose, Detune, Phase, Gates, Color, Shape, Gain, Type (Type is enum)
             return {static_cast<uint8_t>(ParameterType::UINT8),
                     static_cast<uint8_t>(ParameterType::UINT8),
                     static_cast<uint8_t>(ParameterType::UINT8),
@@ -517,14 +690,14 @@ private:
                     static_cast<uint8_t>(ParameterType::UINT8),
                     static_cast<uint8_t>(ParameterType::UINT8),
                     static_cast<uint8_t>(ParameterType::UINT8),
-                    static_cast<uint8_t>(ParameterType::UINT8)};
+                    static_cast<uint8_t>(ParameterType::ENUM)};
         case STOREVAL_ID:
             // Amount (uint8), Destination (uint16)
             return {static_cast<uint8_t>(ParameterType::UINT8),
                     static_cast<uint8_t>(ParameterType::UINT16)};
         case OPERATION_ID:
-            // Operand - uint8_t for now
-            return {static_cast<uint8_t>(ParameterType::UINT8)};
+            // Operand - enum type
+            return {static_cast<uint8_t>(ParameterType::ENUM)};
         case OUTPUT_ID:
             // Gain - uint8_t for now
             return {static_cast<uint8_t>(ParameterType::UINT8)};
@@ -536,6 +709,41 @@ private:
             return {static_cast<uint8_t>(ParameterType::UINT8)};
         case ACCUMULATE_ID:
             return {}; // No parameters
+        default:
+            return {};
+        }
+    }
+
+    std::vector<ParameterEnum> get_parameter_enums_for_instruction(int instruction_id) const
+    {
+        switch (instruction_id)
+        {
+        case OSCILLATOR_ID:
+            // Return enum definitions for each parameter (empty for non-enum parameters)
+            return {
+                ParameterEnum({}), // Transpose - not enum
+                ParameterEnum({}), // Detune - not enum
+                ParameterEnum({}), // Phase - not enum
+                ParameterEnum({}), // Gates - not enum
+                ParameterEnum({}), // Color - not enum
+                ParameterEnum({}), // Shape - not enum
+                ParameterEnum({}), // Gain - not enum
+                ParameterEnum({    // Type - enum (using actual bit flag values from defines.h)
+                               EnumValue(OSCILLATOR_SINE, "Sine"),
+                               EnumValue(OSCILLATOR_SQUARE, "Square"),
+                               EnumValue(OSCILLATOR_SAW, "Sawtooth"),
+                               EnumValue(OSCILLATOR_TRIANGLE, "Triangle"),
+                               EnumValue(OSCILLATOR_NOISE, "Noise"),
+                               EnumValue(OSCILLATOR_SINE + OSCILLATOR_LFO, "Sine+LFO"),
+                               EnumValue(OSCILLATOR_SQUARE + OSCILLATOR_LFO, "Square+LFO"),
+                               EnumValue(OSCILLATOR_SAW + OSCILLATOR_LFO, "Sawtooth+LFO"),
+                               EnumValue(OSCILLATOR_TRIANGLE + OSCILLATOR_LFO, "Triangle+LFO"),
+                               EnumValue(OSCILLATOR_NOISE + OSCILLATOR_LFO, "Noise+LFO")})};
+        case OPERATION_ID:
+            return {
+                ParameterEnum({    // Operand - enum (using operator values from defines.h)
+                               EnumValue(OPERATOR_MUL, "Multiply"),
+                               EnumValue(OPERATOR_MULP, "Multiply and Pop")})};
         default:
             return {};
         }
@@ -679,12 +887,43 @@ public:
         return std::vector<uint8_t>();
     }
 
+    std::vector<ParameterEnum> get_instrument_instruction_parameter_enums(uint32_t instrument_num, uint32_t instruction_index)
+    {
+        Instrument *instrument = get_instrument(instrument_num);
+        if (instrument)
+        {
+            return instrument->get_instruction_parameter_enums(instruction_index);
+        }
+        return std::vector<ParameterEnum>();
+    }
+
+    std::vector<std::string> get_instrument_instruction_parameters_as_strings(uint32_t instrument_num, uint32_t instruction_index)
+    {
+        Instrument *instrument = get_instrument(instrument_num);
+        if (instrument)
+        {
+            return instrument->get_instruction_parameters_as_strings(instruction_index);
+        }
+        return std::vector<std::string>();
+    }
+
     bool update_instrument_parameter(uint32_t instrument_num, uint32_t instruction_index, uint32_t param_index, uint32_t value)
     {
         Instrument *instrument = get_instrument(instrument_num);
         if (instrument)
         {
             instrument->update_parameter(instruction_index, param_index, value);
+            return true;
+        }
+        return false;
+    }
+
+    bool update_instrument_parameter_with_string(uint32_t instrument_num, uint32_t instruction_index, uint32_t param_index, const std::string &value)
+    {
+        Instrument *instrument = get_instrument(instrument_num);
+        if (instrument)
+        {
+            instrument->update_parameter_with_string(instruction_index, param_index, value);
             return true;
         }
         return false;
@@ -731,6 +970,24 @@ PYBIND11_MODULE(synth_engine, m)
                       ", max=" + std::to_string(pr.max_value) +
                       ", step=" + std::to_string(pr.step) + ")"; });
 
+    // Expose EnumValue struct
+    py::class_<EnumValue>(m, "EnumValue")
+        .def(py::init<uint8_t, const std::string &>(), py::arg("value"), py::arg("name"))
+        .def_readwrite("value", &EnumValue::value)
+        .def_readwrite("name", &EnumValue::name)
+        .def("__repr__", [](const EnumValue &ev)
+             { return "EnumValue(value=" + std::to_string(ev.value) + ", name=\"" + ev.name + "\")"; });
+
+    // Expose ParameterEnum struct
+    py::class_<ParameterEnum>(m, "ParameterEnum")
+        .def(py::init<const std::vector<EnumValue> &>(), py::arg("values"))
+        .def("get_name", &ParameterEnum::get_name, py::arg("value"))
+        .def("get_value", &ParameterEnum::get_value, py::arg("name"))
+        .def("get_names", &ParameterEnum::get_names)
+        .def_readwrite("values", &ParameterEnum::values)
+        .def("__repr__", [](const ParameterEnum &pe)
+             { return "ParameterEnum(values=" + std::to_string(pe.values.size()) + " items)"; });
+
     py::class_<Instrument>(m, "Instrument")
         .def("get_id", &Instrument::get_id)
         .def("get_instructions", &Instrument::get_instructions)
@@ -739,8 +996,11 @@ PYBIND11_MODULE(synth_engine, m)
         .def("get_instruction_parameter_names", &Instrument::get_instruction_parameter_names, py::arg("instruction_index"))
         .def("get_instruction_parameter_ranges", &Instrument::get_instruction_parameter_ranges, py::arg("instruction_index"))
         .def("get_instruction_parameter_types", &Instrument::get_instruction_parameter_types, py::arg("instruction_index"))
+        .def("get_instruction_parameter_enums", &Instrument::get_instruction_parameter_enums, py::arg("instruction_index"))
+        .def("get_instruction_parameters_as_strings", &Instrument::get_instruction_parameters_as_strings, py::arg("instruction_index"))
         .def("get_instruction_name", &Instrument::get_instruction_name, py::arg("instruction_index"))
         .def("update_parameter", &Instrument::update_parameter, py::arg("instruction_index"), py::arg("param_index"), py::arg("value"))
+        .def("update_parameter_with_string", &Instrument::update_parameter_with_string, py::arg("instruction_index"), py::arg("param_index"), py::arg("value"))
         .def("render_note", &Instrument::render_note, py::arg("note_num"));
 
     py::class_<SynthEngine>(m, "SynthEngine")
@@ -756,7 +1016,10 @@ PYBIND11_MODULE(synth_engine, m)
         .def("get_instrument_instruction_parameters_full", &SynthEngine::get_instrument_instruction_parameters_full, py::arg("instrument_num"), py::arg("instruction_index"))
         .def("get_instrument_instruction_parameter_ranges", &SynthEngine::get_instrument_instruction_parameter_ranges, py::arg("instrument_num"), py::arg("instruction_index"))
         .def("get_instrument_instruction_parameter_types", &SynthEngine::get_instrument_instruction_parameter_types, py::arg("instrument_num"), py::arg("instruction_index"))
-        .def("update_instrument_parameter", &SynthEngine::update_instrument_parameter, py::arg("instrument_num"), py::arg("instruction_index"), py::arg("param_index"), py::arg("value"));
+        .def("get_instrument_instruction_parameter_enums", &SynthEngine::get_instrument_instruction_parameter_enums, py::arg("instrument_num"), py::arg("instruction_index"))
+        .def("get_instrument_instruction_parameters_as_strings", &SynthEngine::get_instrument_instruction_parameters_as_strings, py::arg("instrument_num"), py::arg("instruction_index"))
+        .def("update_instrument_parameter", &SynthEngine::update_instrument_parameter, py::arg("instrument_num"), py::arg("instruction_index"), py::arg("param_index"), py::arg("value"))
+        .def("update_instrument_parameter_with_string", &SynthEngine::update_instrument_parameter_with_string, py::arg("instrument_num"), py::arg("instruction_index"), py::arg("param_index"), py::arg("value"));
 
     // Expose constants from defines.h
     m.attr("SAMPLE_RATE") = SAMPLE_RATE;
@@ -783,4 +1046,5 @@ PYBIND11_MODULE(synth_engine, m)
     // Parameter Types
     m.attr("PARAM_TYPE_UINT8") = static_cast<uint8_t>(ParameterType::UINT8);
     m.attr("PARAM_TYPE_UINT16") = static_cast<uint8_t>(ParameterType::UINT16);
+    m.attr("PARAM_TYPE_ENUM") = static_cast<uint8_t>(ParameterType::ENUM);
 }

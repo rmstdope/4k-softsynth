@@ -99,6 +99,9 @@ class InstrumentPanel:
                 # Get parameter ranges and types for this instruction
                 param_ranges = instrument.get_instruction_parameter_ranges(instr_idx)
                 param_types = instrument.get_instruction_parameter_types(instr_idx)
+                
+                # Get string-based parameter values for enum parameters
+                params_as_strings = instrument.get_instruction_parameters_as_strings(instr_idx)
 
                 # Create parameter controls
                 for param_idx, (param_name, param_value) in enumerate(
@@ -110,6 +113,7 @@ class InstrumentPanel:
                         'param_value': param_value,
                         'param_ranges': param_ranges,
                         'param_types': param_types,
+                        'params_as_strings': params_as_strings,
                         'row': row
                     }
                     self._create_single_parameter_control(param_info)
@@ -156,6 +160,7 @@ class InstrumentPanel:
         param_value = param_info['param_value']
         param_ranges = param_info['param_ranges']
         param_types = param_info['param_types']
+        params_as_strings = param_info['params_as_strings']
         row = param_info['row']
 
         # Create unique control ID for this parameter
@@ -178,18 +183,56 @@ class InstrumentPanel:
         type_name = "uint8"
         if synth_engine and param_type == synth_engine.PARAM_TYPE_UINT16:
             type_name = "uint16"
+        elif synth_engine and param_type == synth_engine.PARAM_TYPE_ENUM:
+            type_name = "enum"
+
+        # Get enum options if this is an enum parameter
+        enum_options = []
+        if synth_engine and param_type == synth_engine.PARAM_TYPE_ENUM:
+            try:
+                instrument = self._get_current_instrument()
+                if instrument:
+                    param_enums = instrument.get_instruction_parameter_enums(instr_idx)
+                    if param_idx < len(param_enums) and param_enums[param_idx]:
+                        enum_obj = param_enums[param_idx]
+                        # Get all valid enum values (values may not be consecutive)
+                        consecutive_unknowns = 0
+                        for i in range(256):  # Maximum uint8_t values
+                            try:
+                                name = enum_obj.get_name(i)
+                                if name and name != "UNKNOWN":
+                                    enum_options.append(name)
+                                    consecutive_unknowns = 0  # Reset counter
+                                else:
+                                    consecutive_unknowns += 1
+                                    # Stop if we've seen many consecutive unknowns (likely end of valid range)
+                                    if consecutive_unknowns > 50:
+                                        break
+                            except (RuntimeError, IndexError):
+                                consecutive_unknowns += 1
+                                if consecutive_unknowns > 50:
+                                    break
+            except Exception as e:
+                if hasattr(self.main_editor, 'logger'):
+                    self.main_editor.logger.warning("Error getting enum options: %s", e)
+
+        # For enum parameters, use the string value, otherwise use numeric value
+        initial_value = param_value
+        if synth_engine and param_type == synth_engine.PARAM_TYPE_ENUM and param_idx < len(params_as_strings):
+            initial_value = params_as_strings[param_idx]
 
         control = ParameterControl(
             parent=self.scrollable_frame,
             name=param_name,
             config={
-                'initial_value': param_value,
+                'initial_value': initial_value,
                 'row': row,
                 'min_value': min_val,
                 'max_value': max_val,
                 'step_value': step_val,
                 'param_type': param_type,
                 'type_name': type_name,
+                'enum_options': enum_options,
                 'update_callback': self._create_parameter_callback(instr_idx, param_idx)
             }
         )
@@ -238,27 +281,39 @@ class InstrumentPanel:
         if not control:
             return
 
-        # Get the parameter value (0-255 range)
-        param_value = control.get_value()
-
         # Update the instrument parameter
         try:
             instrument = self.main_editor.synth.get_instrument(self.main_editor.current_instrument)
-            if instrument:
+            if not instrument:
+                return
+
+            # Check if this is an enum parameter
+            if (synth_engine and hasattr(control, 'is_enum') and control.is_enum):
+                # For enum parameters, use string-based update
+                selected_text = control.var.get()
+                if selected_text and selected_text != "UNKNOWN":
+                    instrument.update_parameter_with_string(instruction_index, param_index, selected_text)
+                    param_display_value = selected_text
+                else:
+                    return  # Don't update if invalid selection
+            else:
+                # For numeric parameters, use integer value
+                param_value = control.get_value()
                 instrument.update_parameter(instruction_index, param_index, param_value)
+                param_display_value = str(param_value)
 
-                # Log the change with human-readable names
-                instr_name = instrument.get_instruction_name(instruction_index)
-                param_names = instrument.get_instruction_parameter_names(instruction_index)
-                param_name = (param_names[param_index] if param_index < len(param_names)
-                             else f"Param{param_index}")
+            # Log the change with human-readable names
+            instr_name = instrument.get_instruction_name(instruction_index)
+            param_names = instrument.get_instruction_parameter_names(instruction_index)
+            param_name = (param_names[param_index] if param_index < len(param_names)
+                         else f"Param{param_index}")
 
-                if hasattr(self.main_editor, 'logger'):
-                    self.main_editor.logger.debug("Updated %s.%s = %s", instr_name,
-                                                   param_name, param_value)
+            if hasattr(self.main_editor, 'logger'):
+                self.main_editor.logger.debug("Updated %s.%s = %s", instr_name,
+                                               param_name, param_display_value)
 
-                # Update synthesizer and refresh visualization
-                self.update_synth_parameters()
+            # Update synthesizer and refresh visualization
+            self.update_synth_parameters()
 
         except (AttributeError, IndexError, ValueError) as e:
             if hasattr(self.main_editor, 'logger'):
