@@ -135,6 +135,16 @@ class Editor:
         """Initialize the synthesizer"""
         try:
             self.synth = SynthWrapper()
+            
+            # Also initialize the synth_engine directly for parameter access
+            try:
+                import synth_engine  # pylint: disable=import-error
+                self.synth_engine = synth_engine.SynthEngine()
+                self.synth_engine.initialize()
+            except ImportError:
+                self.synth_engine = None
+                self.logger.warning("synth_engine not available for parameter access")
+                
             return True
         except ImportError as e:
             self.logger.error("Synthesizer import error: %s", e)
@@ -336,7 +346,7 @@ class Editor:
 
     def _create_instrument_controllers(self, parent_frame):
         """Create instrument control sliders with value fields in a scrollable frame"""
-        # Create a scrollable frame for ADSR controls
+        # Create a scrollable frame for all instrument parameter controls
         container_frame, scrollable_frame = self._create_scrollable_frame(parent_frame)
         container_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S),
                            pady=(5, 0))
@@ -344,7 +354,104 @@ class Editor:
         # Configure parent frame to expand the scrollable area
         parent_frame.rowconfigure(2, weight=1)
 
-        # ADSR parameter definitions
+        # Store reference to scrollable frame for dynamic updates
+        self.scrollable_frame = scrollable_frame
+        self.container_frame = container_frame
+
+        # Use synth_engine if available for parameter loading
+        if hasattr(self, 'synth_engine') and self.synth_engine:
+            # Create initial instrument controls
+            self._create_controls_for_current_instrument()
+        else:
+            # Fallback to basic ADSR controls
+            self._create_fallback_adsr_controls()
+
+    def _create_controls_for_current_instrument(self):
+        """Create parameter controls for the currently selected instrument"""
+        # Clear existing controls
+        self._clear_instrument_controls()
+        
+        # Get current instrument
+        instrument = self.synth_engine.get_instrument(self.current_instrument)
+        if not instrument:
+            self._show_no_instrument_message()
+            return
+            
+        instructions = instrument.get_instructions()
+        if not instructions:
+            self._show_no_parameters_message()
+            return
+            
+        # Create controls for all parameters of all instructions
+        row = 0
+        for instr_idx, instr_id in enumerate(instructions):
+            instr_name = instrument.get_instruction_name(instr_idx)
+            param_names = instrument.get_instruction_parameter_names(instr_idx)
+            param_values = instrument.get_instruction_parameters(instr_idx)
+            
+            # Add section header for this instruction
+            if param_names:  # Only show header if there are parameters to display
+                header_label = ttk.Label(self.scrollable_frame, 
+                                       text=f"🎛️ {instr_name}", 
+                                       font=('TkDefaultFont', 9, 'bold'))
+                header_label.grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=(10, 5))
+                row += 1
+                
+                # Create parameter controls
+                for param_idx, (param_name, param_value) in enumerate(zip(param_names, param_values)):
+                    # Convert 0-255 parameter value to 0.0-1.0 range for UI
+                    normalized_value = param_value / 255.0
+                    
+                    # Create unique control ID for this parameter
+                    control_id = f"instr_{instr_idx}_param_{param_idx}"
+                    
+                    control = ParameterControl(
+                        parent=self.scrollable_frame,
+                        name=param_name,
+                        initial_value=normalized_value,
+                        row=row,
+                        update_callback=self._create_parameter_callback(instr_idx, param_idx)
+                    )
+                    
+                    # Store control with unique ID
+                    self.adsr_controls[control_id] = control
+                    row += 1
+        
+        # Update canvas scroll region
+        self.scrollable_frame.update_idletasks()
+        self.container_frame.canvas.configure(scrollregion=self.container_frame.canvas.bbox("all"))
+
+    def _clear_instrument_controls(self):
+        """Clear all existing instrument parameter controls"""
+        # Destroy all existing controls
+        for control_id in list(self.adsr_controls.keys()):
+            control = self.adsr_controls[control_id]
+            # Destroy the widgets (they're in the scrollable frame)
+            # The ParameterControl class doesn't have explicit cleanup, 
+            # but the widgets will be destroyed with the parent
+            del self.adsr_controls[control_id]
+            
+        # Clear all widgets from scrollable frame
+        for widget in self.scrollable_frame.winfo_children():
+            widget.destroy()
+
+    def _show_no_instrument_message(self):
+        """Show message when no instrument is available"""
+        msg_label = ttk.Label(self.scrollable_frame, 
+                            text="❌ No instrument data available", 
+                            foreground="red")
+        msg_label.grid(row=0, column=0, pady=20)
+
+    def _show_no_parameters_message(self):
+        """Show message when instrument has no parameters"""
+        msg_label = ttk.Label(self.scrollable_frame, 
+                            text="ℹ️ This instrument has no configurable parameters", 
+                            foreground="gray")
+        msg_label.grid(row=0, column=0, pady=20)
+
+    def _create_fallback_adsr_controls(self):
+        """Create fallback ADSR controls when synth_engine is not available"""
+        # ADSR parameter definitions (fallback)
         adsr_params = [
             ("Attack", 0.1),
             ("Decay", 0.2),
@@ -356,13 +463,52 @@ class Editor:
         # Create ADSR controls using the ParameterControl class
         for i, (name, default_value) in enumerate(adsr_params):
             control = ParameterControl(
-                parent=scrollable_frame,
+                parent=self.scrollable_frame,
                 name=name,
                 initial_value=default_value,
                 row=i,  # Start from row 0 in the scrollable frame
                 update_callback=self._on_parameter_change
             )
             self.adsr_controls[name.lower()] = control
+
+    def _on_instrument_parameter_change(self, instruction_index, param_index):
+        """Handle parameter changes for instrument parameters"""
+        if not hasattr(self, 'synth_engine') or not self.synth_engine:
+            return
+            
+        # Get the control ID and retrieve the control
+        control_id = f"instr_{instruction_index}_param_{param_index}"
+        control = self.adsr_controls.get(control_id)
+        
+        if not control:
+            return
+            
+        # Get normalized value (0.0-1.0) and convert to 0-255 range
+        normalized_value = control.get_value()
+        param_value = int(normalized_value * 255)
+        
+        # Update the instrument parameter
+        try:
+            instrument = self.synth_engine.get_instrument(self.current_instrument)
+            if instrument:
+                instrument.update_parameter(instruction_index, param_index, param_value)
+                
+                # Log the change with human-readable names
+                instr_name = instrument.get_instruction_name(instruction_index)
+                param_names = instrument.get_instruction_parameter_names(instruction_index)
+                param_name = param_names[param_index] if param_index < len(param_names) else f"Param{param_index}"
+                
+                self.logger.debug(f"Updated {instr_name}.{param_name} = {param_value}")
+                
+                # Update synthesizer and refresh visualization
+                self.update_synth_parameters()
+                
+        except Exception as e:
+            self.logger.error(f"Error updating instrument parameter: {e}")
+
+    def _create_parameter_callback(self, instruction_index, param_index):
+        """Create a callback function for a specific parameter"""
+        return lambda: self._on_instrument_parameter_change(instruction_index, param_index)
 
     def _create_scrollable_frame(self, parent):
         """Create a scrollable frame with canvas and scrollbar"""
@@ -451,6 +597,11 @@ class Editor:
         if selection:
             self.current_instrument = int(selection.split()[-1])
             self.log_output(f"Selected {selection}")
+            
+            # Recreate controls for the new instrument
+            if hasattr(self, 'synth_engine') and self.synth_engine:
+                self._create_controls_for_current_instrument()
+            
             self.update_synth_parameters()
 
     def _on_parameter_change(self):
@@ -494,13 +645,17 @@ class Editor:
                 # Note: ADSR parameters are not yet implemented in the ARM64 engine
                 # For now, just update the waveform display
                 status_msg = f"Updated parameters for instrument {self.current_instrument}"
-                self.status_var.set(status_msg)
+                if hasattr(self, 'status_var') and self.status_var:
+                    self.status_var.set(status_msg)
 
                 # Auto-refresh the waveform display
                 self.auto_update_waveform()
 
             except (RuntimeError, ValueError) as e:
-                self.log_output(f"Error updating parameters: {e}")
+                if hasattr(self, 'log_output'):
+                    self.log_output(f"Error updating parameters: {e}")
+                else:
+                    print(f"Error updating parameters: {e}")
 
     def toggle_play(self):
         """Toggle play/pause"""
