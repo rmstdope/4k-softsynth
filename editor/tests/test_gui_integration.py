@@ -6,8 +6,11 @@ Test the updated GUI with instrument parameter controls
 import sys
 import os
 
-# Add the current directory to the Python path for imports
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Add the src directory to the Python path for imports
+editor_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+src_dir = os.path.join(editor_dir, 'src')
+if src_dir not in sys.path:
+    sys.path.insert(0, src_dir)
 
 def test_gui_components():
     """Test the GUI components without starting the main loop"""

@@ -1,7 +1,6 @@
-#!/usr/bin/env python3
 """
-Simple Tkinter-based GUI for 4K Softsynth Editor
-Alternative to PySimpleGUI which has compatibility issues
+Main Editor Application for 4K Softsynth
+Simple Tkinter-based GUI for the synthesizer
 """
 
 import os
@@ -20,87 +19,19 @@ matplotlib.use('TkAgg')
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # pylint: disable=import-error,wrong-import-position
-from audio.synth_wrapper import SynthWrapper
-from audio.audio_device import Audio
-from utils.logger import setup_logger
+from editor.audio.synth_wrapper import SynthWrapper
+from editor.audio.audio_device import Audio
+from editor.utils.logger import setup_logger
+from .parameter_control import ParameterControl
+
+# Import synth_engine if available
+try:
+    import synth_engine  # pylint: disable=import-error
+except ImportError:
+    synth_engine = None
+
 
 # pylint: disable=too-many-instance-attributes,too-many-public-methods
-class ParameterControl:
-    """A reusable slider-value pair control for parameters"""
-
-    def __init__(self, parent, name, initial_value, row, *, update_callback=None):
-        """Initialize a parameter control
-
-        Args:
-            parent: Parent tkinter widget
-            name: Display name for the parameter
-            initial_value: Initial value for the parameter
-            row: Grid row for placement
-            update_callback: Function to call when value changes
-        """
-        self.name = name
-        self.min_val = 0.0
-        self.max_val = 1.0
-        self.update_callback = update_callback
-
-        # Create the control widgets
-        self._create_widgets(parent, row, initial_value)
-
-    def _create_widgets(self, parent, row, initial_value):
-        """Create the label, slider, and entry widgets"""
-        # Label
-        ttk.Label(parent, text=f"{self.name}:").grid(row=row, column=0, sticky=tk.W)
-
-        # Variable for the slider
-        self.var = tk.DoubleVar(value=initial_value)
-
-        # Slider
-        self.scale = ttk.Scale(parent, from_=self.min_val, to=self.max_val,
-                              variable=self.var, orient=tk.HORIZONTAL,
-                              command=self._on_slider_change)
-        self.scale.grid(row=row, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
-
-        # Entry field
-        self.entry = ttk.Entry(parent, width=8, justify=tk.CENTER)
-        self.entry.grid(row=row, column=2, sticky=tk.W, padx=(0, 5))
-        self.entry.insert(0, f"{initial_value:.2f}")
-        self.entry.bind('<Return>', self._on_entry_change)
-        self.entry.bind('<FocusOut>', self._on_entry_change)
-
-    def _on_slider_change(self, value):
-        """Handle slider changes"""
-        self.entry.delete(0, tk.END)
-        self.entry.insert(0, f"{float(value):.2f}")
-        if self.update_callback:
-            self.update_callback()
-
-    def _on_entry_change(self, _event):
-        """Handle entry field changes"""
-        try:
-            value = float(self.entry.get())
-            value = max(self.min_val, min(self.max_val, value))  # Clamp to valid range
-            self.var.set(value)
-            self.entry.delete(0, tk.END)
-            self.entry.insert(0, f"{value:.2f}")
-            if self.update_callback:
-                self.update_callback()
-        except ValueError:
-            # Reset to current slider value if invalid input
-            self.entry.delete(0, tk.END)
-            self.entry.insert(0, f"{self.var.get():.2f}")
-
-    def get_value(self):
-        """Get the current parameter value"""
-        return self.var.get()
-
-    def set_value(self, value):
-        """Set the parameter value programmatically"""
-        value = max(self.min_val, min(self.max_val, value))
-        self.var.set(value)
-        self.entry.delete(0, tk.END)
-        self.entry.insert(0, f"{value:.2f}")
-
-
 class Editor:
     """Simple Tkinter-based editor for the synthesizer"""
 
@@ -131,20 +62,26 @@ class Editor:
         # ADSR parameter controls - set up in _create_instrument_controllers
         self.adsr_controls = {}
 
+        # Synthesizer engine - initialized in initialize_synth
+        self.synth_engine = None
+
+        # Scrollable frame components - initialized in _create_instrument_controllers
+        self.scrollable_frame = None
+        self.container_frame = None
+
     def initialize_synth(self):
         """Initialize the synthesizer"""
         try:
             self.synth = SynthWrapper()
-            
+
             # Also initialize the synth_engine directly for parameter access
-            try:
-                import synth_engine  # pylint: disable=import-error
-                self.synth_engine = synth_engine.SynthEngine()
+            if synth_engine:
+                self.synth_engine = synth_engine.SynthEngine()  # pylint: disable=c-extension-no-member
                 self.synth_engine.initialize()
-            except ImportError:
+            else:
                 self.synth_engine = None
                 self.logger.warning("synth_engine not available for parameter access")
-                
+
             return True
         except ImportError as e:
             self.logger.error("Synthesizer import error: %s", e)
@@ -317,6 +254,7 @@ class Editor:
         tempo_spinbox.pack(side=tk.LEFT)
         ttk.Label(transport_frame, text="BPM").pack(side=tk.LEFT,
                                                    padx=(5, 0))
+
     def _create_instrument_controls(self, main_frame):
         """Create instrument control section"""
         instrument_frame = ttk.LabelFrame(main_frame, text="Instrument Controls",
@@ -370,53 +308,54 @@ class Editor:
         """Create parameter controls for the currently selected instrument"""
         # Clear existing controls
         self._clear_instrument_controls()
-        
+
         # Get current instrument
         instrument = self.synth_engine.get_instrument(self.current_instrument)
         if not instrument:
             self._show_no_instrument_message()
             return
-            
+
         instructions = instrument.get_instructions()
         if not instructions:
             self._show_no_parameters_message()
             return
-            
+
         # Create controls for all parameters of all instructions
         row = 0
-        for instr_idx, instr_id in enumerate(instructions):
+        for instr_idx, _ in enumerate(instructions):
             instr_name = instrument.get_instruction_name(instr_idx)
             param_names = instrument.get_instruction_parameter_names(instr_idx)
             param_values = instrument.get_instruction_parameters(instr_idx)
-            
+
             # Add section header for this instruction
             if param_names:  # Only show header if there are parameters to display
-                header_label = ttk.Label(self.scrollable_frame, 
-                                       text=f"🎛️ {instr_name}", 
+                header_label = ttk.Label(self.scrollable_frame,
+                                       text=f"🎛️ {instr_name}",
                                        font=('TkDefaultFont', 9, 'bold'))
-                header_label.grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=(10, 5))
+                header_label.grid(row=row, column=0, columnspan=3,
+                                 sticky=tk.W, pady=(10, 5))
                 row += 1
-                
+
                 # Create parameter controls
-                for param_idx, (param_name, param_value) in enumerate(zip(param_names, param_values)):
-                    # Convert 0-255 parameter value to 0.0-1.0 range for UI
-                    normalized_value = param_value / 255.0
-                    
+                for param_idx, (param_name, param_value) in enumerate(
+                    zip(param_names, param_values)):
                     # Create unique control ID for this parameter
                     control_id = f"instr_{instr_idx}_param_{param_idx}"
-                    
+
                     control = ParameterControl(
                         parent=self.scrollable_frame,
                         name=param_name,
-                        initial_value=normalized_value,
-                        row=row,
-                        update_callback=self._create_parameter_callback(instr_idx, param_idx)
+                        config={
+                            'initial_value': param_value,
+                            'row': row,
+                            'update_callback': self._create_parameter_callback(instr_idx, param_idx)
+                        }
                     )
-                    
+
                     # Store control with unique ID
                     self.adsr_controls[control_id] = control
                     row += 1
-        
+
         # Update canvas scroll region
         self.scrollable_frame.update_idletasks()
         self.container_frame.canvas.configure(scrollregion=self.container_frame.canvas.bbox("all"))
@@ -425,27 +364,26 @@ class Editor:
         """Clear all existing instrument parameter controls"""
         # Destroy all existing controls
         for control_id in list(self.adsr_controls.keys()):
-            control = self.adsr_controls[control_id]
             # Destroy the widgets (they're in the scrollable frame)
-            # The ParameterControl class doesn't have explicit cleanup, 
+            # The ParameterControl class doesn't have explicit cleanup,
             # but the widgets will be destroyed with the parent
             del self.adsr_controls[control_id]
-            
+
         # Clear all widgets from scrollable frame
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
 
     def _show_no_instrument_message(self):
         """Show message when no instrument is available"""
-        msg_label = ttk.Label(self.scrollable_frame, 
-                            text="❌ No instrument data available", 
+        msg_label = ttk.Label(self.scrollable_frame,
+                            text="❌ No instrument data available",
                             foreground="red")
         msg_label.grid(row=0, column=0, pady=20)
 
     def _show_no_parameters_message(self):
         """Show message when instrument has no parameters"""
-        msg_label = ttk.Label(self.scrollable_frame, 
-                            text="ℹ️ This instrument has no configurable parameters", 
+        msg_label = ttk.Label(self.scrollable_frame,
+                            text="ℹ️ This instrument has no configurable parameters",
                             foreground="gray")
         msg_label.grid(row=0, column=0, pady=20)
 
@@ -465,9 +403,11 @@ class Editor:
             control = ParameterControl(
                 parent=self.scrollable_frame,
                 name=name,
-                initial_value=default_value,
-                row=i,  # Start from row 0 in the scrollable frame
-                update_callback=self._on_parameter_change
+                config={
+                    'initial_value': default_value,
+                    'row': i,  # Start from row 0 in the scrollable frame
+                    'update_callback': self._on_parameter_change
+                }
             )
             self.adsr_controls[name.lower()] = control
 
@@ -475,36 +415,36 @@ class Editor:
         """Handle parameter changes for instrument parameters"""
         if not hasattr(self, 'synth_engine') or not self.synth_engine:
             return
-            
+
         # Get the control ID and retrieve the control
         control_id = f"instr_{instruction_index}_param_{param_index}"
         control = self.adsr_controls.get(control_id)
-        
+
         if not control:
             return
-            
-        # Get normalized value (0.0-1.0) and convert to 0-255 range
-        normalized_value = control.get_value()
-        param_value = int(normalized_value * 255)
-        
+
+        # Get the parameter value (0-255 range)
+        param_value = control.get_value()
+
         # Update the instrument parameter
         try:
             instrument = self.synth_engine.get_instrument(self.current_instrument)
             if instrument:
                 instrument.update_parameter(instruction_index, param_index, param_value)
-                
+
                 # Log the change with human-readable names
                 instr_name = instrument.get_instruction_name(instruction_index)
                 param_names = instrument.get_instruction_parameter_names(instruction_index)
-                param_name = param_names[param_index] if param_index < len(param_names) else f"Param{param_index}"
-                
-                self.logger.debug(f"Updated {instr_name}.{param_name} = {param_value}")
-                
+                param_name = (param_names[param_index] if param_index < len(param_names)
+                             else f"Param{param_index}")
+
+                self.logger.debug("Updated %s.%s = %s", instr_name, param_name, param_value)
+
                 # Update synthesizer and refresh visualization
                 self.update_synth_parameters()
-                
-        except Exception as e:
-            self.logger.error(f"Error updating instrument parameter: {e}")
+
+        except (AttributeError, IndexError, ValueError) as e:
+            self.logger.error("Error updating instrument parameter: %s", e)
 
     def _create_parameter_callback(self, instruction_index, param_index):
         """Create a callback function for a specific parameter"""
@@ -527,11 +467,19 @@ class Editor:
         )
 
         # Create window in canvas
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas_window = canvas.create_window((0, 0), window=scrollable_frame,
+                                            anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
 
+        # Configure scrollable frame to expand to canvas width
+        def _on_canvas_configure(event):
+            canvas.itemconfig(canvas_window, width=event.width)
+
+        canvas.bind('<Configure>', _on_canvas_configure)
+
         # Configure grid columns for ADSR controls
-        scrollable_frame.columnconfigure(1, weight=2)  # Slider column
+        scrollable_frame.columnconfigure(0, weight=0)  # Label column
+        scrollable_frame.columnconfigure(1, weight=10)  # Slider column - wider sliders
         scrollable_frame.columnconfigure(2, weight=0)  # Value field column
 
         # Pack canvas and scrollbar
@@ -551,6 +499,7 @@ class Editor:
         container_frame.canvas = canvas
 
         return container_frame, scrollable_frame
+
     def _create_visualization_section(self, main_frame):
         """Create visualization section"""
         viz_frame = ttk.LabelFrame(main_frame, text="Instrument Visualization",
@@ -597,11 +546,11 @@ class Editor:
         if selection:
             self.current_instrument = int(selection.split()[-1])
             self.log_output(f"Selected {selection}")
-            
+
             # Recreate controls for the new instrument
             if hasattr(self, 'synth_engine') and self.synth_engine:
                 self._create_controls_for_current_instrument()
-            
+
             self.update_synth_parameters()
 
     def _on_parameter_change(self):
@@ -615,10 +564,10 @@ class Editor:
 
     def get_parameter_value(self, param_name):
         """Get the value of a specific ADSR parameter
-        
+
         Args:
             param_name: Name of the parameter ('attack', 'decay', 'sustain', 'release', 'gain')
-        
+
         Returns:
             float: Parameter value (0.0 to 1.0) or None if parameter doesn't exist
         """
@@ -627,7 +576,7 @@ class Editor:
 
     def set_parameter_value(self, param_name, value):
         """Set the value of a specific ADSR parameter
-        
+
         Args:
             param_name: Name of the parameter ('attack', 'decay', 'sustain', 'release', 'gain')
             value: New value (0.0 to 1.0)
@@ -635,8 +584,6 @@ class Editor:
         control = self.adsr_controls.get(param_name.lower())
         if control:
             control.set_value(value)
-
-
 
     def update_synth_parameters(self):
         """Update synthesizer parameters based on UI controls"""
@@ -820,84 +767,6 @@ class Editor:
         ttk.Button(info_frame, text="Save Data",
                   command=save_data).pack(side=tk.RIGHT, padx=(0, 5))
 
-    # def play_test_note(self):
-    #     """Play a test note (A4 = 440Hz)"""
-    #     self.log_output("Playing A4 test note...")
-    #     try:
-    #         # Update parameters first
-    #         self.update_synth_parameters()
-
-    #         # Trigger A4 note (MIDI note 69)
-    #         self.synth.trigger_note(self.current_instrument, 69, 0.8)
-
-    #         # Generate 2 seconds of audio
-    #         num_samples = self.synth.get_sample_rate() * 2
-    #         audio_data = self.synth.render_audio(num_samples)
-
-    #         if audio_data is not None:
-    #             self.log_output(f"✓ Generated test note: {len(audio_data)} samples")
-    #             # FIXME: Play the audio through system audio
-    #         else:
-    #             self.log_output("✗ Failed to generate test note")
-    #     except (RuntimeError, ValueError) as e:
-    #         self.log_output(f"✗ Test note failed: {e}")
-
-    # def generate_sample(self):
-    #     """Generate a sample audio file"""
-    #     self.log_output("Generating sample audio file...")
-    #     try:
-    #         # Set up parameters for a chord
-    #         self.update_synth_parameters()
-
-    #         # Trigger a C major chord (C4, E4, G4)
-    #         self.synth.trigger_note(0, 60, 0.7)  # C4
-    #         self.synth.trigger_note(1, 64, 0.7)  # E4
-    #         self.synth.trigger_note(2, 67, 0.7)  # G4
-
-    #         # Generate 3 seconds of audio
-    #         num_samples = self.synth.get_sample_rate() * 3
-    #         audio_data = self.synth.render_audio(num_samples)
-
-    #         if audio_data is not None:
-    #             # Save first 1000 samples to text file
-    #             output_file = "sample_chord.txt"
-    #             np.savetxt(output_file, audio_data[:1000])
-    #             self.log_output(f"✓ Sample chord saved to {output_file}")
-    #             duration = len(audio_data) // 88200
-    #             self.log_output(f"  Generated {len(audio_data)} samples "
-    #                           f"({duration:.1f}s)")
-    #         else:
-    #             self.log_output("✗ Failed to generate sample")
-    #     except (RuntimeError, ValueError, OSError) as e:
-    #         self.log_output(f"✗ Sample generation failed: {e}")
-
-    # def run_performance_test(self):
-    #     """Run a performance test"""
-    #     self.log_output("Running performance test...")
-    #     try:
-    #         test_samples = self.synth.get_sample_rate()  # 1 second
-    #         iterations = 10
-
-    #         start_time = time.time()
-
-    #         for i in range(iterations):
-    #             audio_data = self.synth.render_audio(test_samples)
-    #             if audio_data is None:
-    #                 self.log_output(f"✗ Failed at iteration {i+1}")
-    #                 return
-
-    #         end_time = time.time()
-    #         total_time = end_time - start_time
-    #         audio_time = (test_samples * iterations) / self.synth.get_sample_rate()
-
-    #         self.log_output("✓ Performance test completed:")
-    #         self.log_output(f"  Render time: {total_time:.3f}s, "
-    #                       f"Audio time: {audio_time:.3f}s")
-    #         self.log_output(f"  Real-time factor: {audio_time/total_time:.2f}x")
-
-    #     except (RuntimeError, ValueError) as e:
-    #         self.log_output(f"✗ Performance test failed: {e}")
-
     def new_project(self):
         """Create new project"""
         self.log_output("New project created")
@@ -1038,11 +907,3 @@ class Editor:
             if self.root:
                 messagebox.showerror("Error", f"Application error: {e}")
             return 1
-
-def main():
-    """Main entry point"""
-    app = Editor()
-    return app.run()
-
-if __name__ == "__main__":
-    sys.exit(main())

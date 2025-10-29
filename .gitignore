@@ -30,4 +30,11 @@ obj/
 .venv
 __pycache__/
 build/
+.pytest_cache/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+.eggs/
 

@@ -61,13 +61,15 @@ title: "ARM64 Assembly Instructions"
   1:
   ```
 
-## 9. File Structure
-
-- Place all ARM64 routines in `softsynth_arm64.S` and wrappers in `softsynth_wrapper_arm64.S`.
-- Use `.extern` for external symbols and `.global` for exported functions.
-
-## 10. Compile Targets
+## 9. Compile Targets
 
 - The compile target is Macs with Apple Silicon (ARM64/AArch64).
 - Ensure all instructions and features used are valid and supported on Apple Silicon.
 - Avoid legacy ARM or x86 instructions and any features not available on macOS ARM64.
+
+## 10. Optimization
+
+- The most important goal is minimizing the size of the binary.
+- Always optimize for reduced binary size, even if it means sacrificing some performance or readability.
+- Prefer shorter instruction sequences, avoid unnecessary code or data, and use the smallest possible data types and encodings.
+- Don't use subroutines of functions unless they reduce overall size.

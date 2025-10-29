@@ -4,6 +4,7 @@ Logging configuration for 4K Softsynth Editor
 
 import logging
 import sys
+import os
 from datetime import datetime
 
 def setup_logger(name: str = "synth_editor", level: int = logging.INFO) -> logging.Logger:
@@ -29,6 +30,7 @@ def setup_logger(name: str = "synth_editor", level: int = logging.INFO) -> loggi
 
     # File handler
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    os.makedirs("logs", exist_ok=True)
     file_handler = logging.FileHandler(f"logs/synth_editor_{timestamp}.log")
     file_handler.setLevel(logging.DEBUG)
 

@@ -6,8 +6,11 @@ Final test to verify the complete GUI parameter integration works
 import sys
 import os
 
-# Add the current directory to the Python path for imports
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Add the src directory to the Python path for imports
+editor_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+src_dir = os.path.join(editor_dir, 'src')
+if src_dir not in sys.path:
+    sys.path.insert(0, src_dir)
 
 def test_gui_parameter_integration():
     """Test complete GUI parameter integration"""
@@ -45,23 +48,22 @@ def test_gui_parameter_integration():
         import tkinter as tk
         from tkinter import ttk
         
-        # Import main module
-        import importlib.util
-        spec = importlib.util.spec_from_file_location("main_module", "__main__.py")
-        main_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(main_module)
+        # Import classes from src directory
+        from editor.gui.parameter_control import ParameterControl
         
         # Test ParameterControl class
         root = tk.Tk()
         root.withdraw()
         
         test_frame = ttk.Frame(root)
-        control = main_module.ParameterControl(
+        control = ParameterControl(
             parent=test_frame,
             name="Test Parameter",
-            initial_value=0.5,
-            row=0,
-            update_callback=lambda: print("Callback triggered!")
+            config={
+                'initial_value': 0.5,
+                'row': 0,
+                'update_callback': lambda: print("Callback triggered!")
+            }
         )
         
         if control.get_value() == 0.5:

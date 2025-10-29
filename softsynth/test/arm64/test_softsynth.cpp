@@ -533,7 +533,7 @@ void test_debug_instrument_output(void)
     TEST_ASSERT_EQUAL_UINT32(32, synth_data[INSTRUMENT_NOTE_OFFSET]);
     TEST_ASSERT_EQUAL_UINT32(0, synth_data[INSTRUMENT_RELEASE_OFFSET]);
 
-    debug_next_instrument_sample(0, &output);
+    debug_next_instrument_sample(0, &output, 0);
 }
 
 int main(void)

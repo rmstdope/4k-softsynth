@@ -13,8 +13,8 @@ make bin/softsynth.o bin/song.o
 
 echo "🔧 Rebuilding Python extension..."
 cd ../editor
-rm -f synth_engine*.so
-rm -rf build/
+rm -f synth_engine*.so src/synth_engine*.so
+rm -rf build/ src/build/
 /Users/henrikku/repos/4k-softsynth/.venv/bin/python setup.py build_ext --inplace --debug
 
 echo "✅ Full rebuild complete!"

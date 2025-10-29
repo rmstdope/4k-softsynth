@@ -3,9 +3,8 @@ Setup script for building the C++ extension module
 """
 
 from pybind11.setup_helpers import Pybind11Extension, build_ext
-from pybind11 import get_cmake_dir
 import pybind11
-from setuptools import setup, Extension
+from setuptools import setup
 import os
 import subprocess
 import sys
