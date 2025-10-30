@@ -187,13 +187,13 @@ class InstrumentPanel:
         min_val, max_val, step_val = (0, 128, 1)  # defaults
         param_ranges = param_info['param_ranges']
         param_idx = param_info['param_idx']
-        
+
         if param_idx < len(param_ranges):
             param_range = param_ranges[param_idx]
             min_val = param_range.min_value
             max_val = param_range.max_value
             step_val = param_range.step
-        
+
         return min_val, max_val, step_val
 
     def _get_parameter_type(self, param_info):
@@ -201,10 +201,9 @@ class InstrumentPanel:
         param_type = 0  # UINT8 default
         param_types = param_info['param_types']
         param_idx = param_info['param_idx']
-        
+
         if param_idx < len(param_types):
             param_type = param_types[param_idx]
-        
         return param_type
 
     def _get_type_name(self, param_type):
@@ -229,13 +228,13 @@ class InstrumentPanel:
 
             param_enums = instrument.get_instruction_parameter_enums(param_info['instr_idx'])
             param_idx = param_info['param_idx']
-            
+
             if param_idx >= len(param_enums) or not param_enums[param_idx]:
                 return enum_options
 
             enum_obj = param_enums[param_idx]
             enum_options = self._extract_enum_names(enum_obj)
-            
+
         except Exception as e:  # pylint: disable=broad-exception-caught
             if hasattr(self.main_editor, 'logger'):
                 self.main_editor.logger.warning("Error getting enum options: %s", e)
@@ -246,7 +245,7 @@ class InstrumentPanel:
         """Extract enum names from enum object."""
         enum_options = []
         consecutive_unknowns = 0
-        
+
         for i in range(256):  # Maximum uint8_t values
             try:
                 name = enum_obj.get_name(i)
@@ -262,18 +261,18 @@ class InstrumentPanel:
                 consecutive_unknowns += 1
                 if consecutive_unknowns > 50:
                     break
-        
+
         return enum_options
 
     def _get_initial_value(self, param_info, param_type):
         """Get initial value for parameter."""
         initial_value = param_info['param_value']
-        
+
         # For enum parameters, use the string value
         if (synth_engine and param_type == synth_engine.PARAM_TYPE_ENUM and  # pylint: disable=c-extension-no-member
                 param_info['param_idx'] < len(param_info['params_as_strings'])):
             initial_value = param_info['params_as_strings'][param_info['param_idx']]
-        
+
         return initial_value
 
     def _update_scroll_region(self):
@@ -328,7 +327,8 @@ class InstrumentPanel:
                 # For enum parameters, use string-based update
                 selected_text = control.var.get()
                 if selected_text and selected_text != "UNKNOWN":
-                    instrument.update_parameter_with_string(instruction_index, param_index, selected_text)
+                    instrument.update_parameter_with_string(
+                        instruction_index, param_index, selected_text)
                     param_display_value = selected_text
                 else:
                     return  # Don't update if invalid selection

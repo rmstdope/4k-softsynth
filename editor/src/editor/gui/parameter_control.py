@@ -13,7 +13,7 @@ except ImportError:
     synth_engine = None
 
 
-class ParameterControl:
+class ParameterControl:  # pylint: disable=too-many-instance-attributes
     """A reusable parameter control supporting sliders and dropdowns for enum parameters"""
 
     def __init__(self, parent: tk.Widget, name: str, config: Dict[str, Any]) -> None:
@@ -34,10 +34,16 @@ class ParameterControl:
         self.type_name = config.get('type_name', 'uint8')
         self.enum_options = config.get('enum_options', [])
         self.update_callback: Optional[Callable[[], None]] = config.get('update_callback')
-        
+
+        # Initialize widget attributes
+        self.var = None
+        self.combobox = None
+        self.scale = None
+        self.entry = None
+
         # Check if this is an enum parameter
-        self.is_enum = (synth_engine is not None and 
-                       self.param_type == synth_engine.PARAM_TYPE_ENUM and 
+        self.is_enum = (synth_engine is not None and
+                       self.param_type == synth_engine.PARAM_TYPE_ENUM and  # pylint: disable=c-extension-no-member
                        self.enum_options)
 
         # Create the control widgets
@@ -64,19 +70,19 @@ class ParameterControl:
         else:
             # If initial_value is numeric, treat it as an index (legacy behavior)
             initial_index = int(initial_value)
-            initial_text = (self.enum_options[initial_index] 
-                           if 0 <= initial_index < len(self.enum_options) 
+            initial_text = (self.enum_options[initial_index]
+                           if 0 <= initial_index < len(self.enum_options)
                            else "UNKNOWN")
-        
+
         self.var = tk.StringVar(value=initial_text)
-        
+
         # Dropdown (Combobox)
-        self.combobox = ttk.Combobox(parent, textvariable=self.var, 
-                                    values=self.enum_options, 
+        self.combobox = ttk.Combobox(parent, textvariable=self.var,
+                                    values=self.enum_options,
                                     state="readonly", width=12)
         self.combobox.grid(row=row, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
         self.combobox.bind('<<ComboboxSelected>>', self._on_enum_change)
-        
+
         # No entry field needed for enums - the dropdown shows the value
         # Create empty widget in column 2 to maintain layout
         ttk.Label(parent, text="").grid(row=row, column=2)
@@ -104,11 +110,11 @@ class ParameterControl:
         # Apply step quantization
         raw_value = int(float(value))
         quantized_value = self._quantize_to_step(raw_value)
-        
+
         # Update the variable if quantization changed the value
         if quantized_value != raw_value:
             self.var.set(quantized_value)
-        
+
         self.entry.delete(0, tk.END)
         self.entry.insert(0, f"{quantized_value}")
         if self.update_callback:
@@ -170,15 +176,15 @@ class ParameterControl:
             self.var.set(value)
             self.entry.delete(0, tk.END)
             self.entry.insert(0, f"{value}")
-    
+
     def _quantize_to_step(self, value: int) -> int:
         """Quantize a value to the nearest step increment"""
         if self.step_val <= 1:
             return value
-        
+
         # Calculate the number of steps from min_val
         steps_from_min = round((value - self.min_val) / self.step_val)
         quantized = self.min_val + (steps_from_min * self.step_val)
-        
+
         # Ensure we stay within bounds
         return max(self.min_val, min(self.max_val, quantized))

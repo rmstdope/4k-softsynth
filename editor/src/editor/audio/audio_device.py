@@ -15,8 +15,9 @@ import pyaudio
 class AudioDevice:
     """Audio device manager for real-time audio playback"""
 
-    def __init__(self, sample_rate: int = 44100, channels: int = 1,
-                 chunk_size: int = 1024, format_bits: int = 32):
+    def __init__(self, sample_rate: int = 44100, channels: int = 1,  # pylint: disable=too-many-arguments,too-many-positional-arguments
+                 chunk_size: int = 1024, format_bits: int = 32,
+                 pyaudio_factory=None, auto_initialize: bool = True):
         """Initialize the audio device
 
         Args:
@@ -24,6 +25,8 @@ class AudioDevice:
             channels: Number of audio channels (default: 1 for mono)
             chunk_size: Audio buffer size in samples (default: 1024)
             format_bits: Bit depth - 16 or 32 (default: 32)
+            pyaudio_factory: Factory function for creating PyAudio instances (for testing)
+            auto_initialize: Whether to automatically initialize (default: True)
         """
         self.sample_rate = sample_rate
         self.channels = channels
@@ -45,6 +48,9 @@ class AudioDevice:
         self.is_initialized = False
         self.is_playing = False
 
+        # Dependency injection for testing
+        self._pyaudio_factory = pyaudio_factory if pyaudio_factory else pyaudio.PyAudio
+
         # Playback control
         self._playback_thread = None
         self._stop_playback = threading.Event()
@@ -54,7 +60,8 @@ class AudioDevice:
         self.logger = logging.getLogger(__name__)
 
         # Initialize the audio system
-        self.initialize()
+        if auto_initialize:
+            self.initialize()
 
     def initialize(self) -> bool:
         """Initialize the audio system
@@ -63,7 +70,7 @@ class AudioDevice:
             True if initialization successful, False otherwise
         """
         try:
-            self.pyaudio_instance = pyaudio.PyAudio()
+            self.pyaudio_instance = self._pyaudio_factory()
 
             # Get default output device info
             default_device = self.pyaudio_instance.get_default_output_device_info()
