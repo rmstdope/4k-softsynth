@@ -1,8 +1,7 @@
-"""Status panel component for the audio editor."""
+"""Status panel component for the audio editor using CustomTkinter."""
 
 import datetime
-import tkinter as tk
-from tkinter import ttk, scrolledtext
+import customtkinter as ctk
 
 
 class StatusPanel:
@@ -20,40 +19,39 @@ class StatusPanel:
 
     def create_output_section(self, parent_frame):
         """Create output section."""
-        output_frame = ttk.LabelFrame(parent_frame, text="Output",
-                                    padding="5")
+        output_frame = ctk.CTkFrame(parent_frame, corner_radius=10)
         output_frame.grid(row=2, column=0, columnspan=2,
-                        sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+                        sticky="nsew", padx=5, pady=(0, 10))
 
-        # Create scrolled text widget for output
-        self.output_text = scrolledtext.ScrolledText(
+        # Title label
+        title_label = ctk.CTkLabel(output_frame, text="Output",
+                                  font=ctk.CTkFont(size=16, weight="bold"))
+        title_label.pack(pady=(15, 10))
+
+        # Create text widget for output using CTkTextbox
+        self.output_text = ctk.CTkTextbox(
             output_frame,
-            height=8,
-            width=80,
-            wrap=tk.WORD,
-            font=("Consolas", 9),
-            state=tk.DISABLED
+            height=200,
+            width=600,
+            wrap="word",
+            font=ctk.CTkFont(family="Consolas", size=10),
+            state="disabled"
         )
-        self.output_text.pack(fill=tk.BOTH, expand=True)
-
-        # Configure text tags for different message types
-        self.output_text.tag_configure("success", foreground="green")
-        self.output_text.tag_configure("error", foreground="red")
-        self.output_text.tag_configure("warning", foreground="orange")
-        self.output_text.tag_configure("info", foreground="blue")
+        self.output_text.pack(fill="both", expand=True, padx=15, pady=(0, 15))
 
     def create_status_bar(self, parent_frame):
         """Create status bar."""
-        status_frame = ttk.Frame(parent_frame)
+        status_frame = ctk.CTkFrame(parent_frame, corner_radius=10, height=40)
         status_frame.grid(row=3, column=0, columnspan=2,
-                        sticky=(tk.W, tk.E), pady=(0, 5))
+                        sticky="ew", padx=5, pady=(0, 5))
+        status_frame.grid_propagate(False)
 
         # Status label
-        self.status_var = tk.StringVar(value="Ready")
-        status_label = ttk.Label(status_frame, textvariable=self.status_var,
-                               relief=tk.SUNKEN, anchor=tk.W,
-                               font=("Arial", 8))
-        status_label.pack(fill=tk.X, padx=(0, 5))
+        self.status_text = "Ready"
+        self.status_label = ctk.CTkLabel(status_frame, text=self.status_text,
+                                        font=ctk.CTkFont(size=10),
+                                        anchor="w")
+        self.status_label.pack(fill="x", padx=15, pady=10)
 
     def log_output(self, message):
         """Log a message to the output text widget.
@@ -65,50 +63,48 @@ class StatusPanel:
             return
 
         # Enable text widget temporarily
-        self.output_text.config(state=tk.NORMAL)
+        self.output_text.configure(state="normal")
 
-        # Determine message type and tag
-        tag = None
+        # Determine text color based on message type
+        text_color = None
         if "✓" in message or "▶" in message or "📊" in message or "🎵" in message:
-            tag = "success"
+            text_color = "green"
         elif "✗" in message or "❌" in message:
-            tag = "error"
+            text_color = "red"
         elif "⚠" in message or "warning" in message.lower():
-            tag = "warning"
+            text_color = "orange"
         elif "ℹ️" in message or "🔧" in message:
-            tag = "info"
+            text_color = "lightblue"
 
         # Insert message with timestamp
         timestamp = datetime.datetime.now().strftime("%H:%M:%S")
         full_message = f"[{timestamp}] {message}\n"
 
-        if tag:
-            self.output_text.insert(tk.END, full_message, tag)
-        else:
-            self.output_text.insert(tk.END, full_message)
+        # Insert the message - CTkTextbox doesn't support text tags, so we just add the text
+        self.output_text.insert("end", full_message)
 
         # Scroll to end
-        self.output_text.see(tk.END)
+        self.output_text.see("end")
 
         # Disable text widget again
-        self.output_text.config(state=tk.DISABLED)
+        self.output_text.configure(state="disabled")
 
         # Update status bar
-        if self.status_var:
-            # Extract clean message for status bar (remove emojis and timestamp)
+        if hasattr(self, 'status_label'):
+            # Extract clean message for status bar (remove emojis)
             clean_message = message.replace("✓", "").replace("✗", "")
             clean_message = clean_message.replace("🎵", "").replace("📊", "")
             clean_message = clean_message.replace("⏸", "").replace("⏹", "")
             clean_message = clean_message.replace("▶", "").strip()
-            self.status_var.set(
-                clean_message[:50] + "..." if len(clean_message) > 50 else clean_message)
+            display_message = clean_message[:50] + "..." if len(clean_message) > 50 else clean_message
+            self.status_label.configure(text=display_message)
 
     def clear_output(self):
         """Clear the output text widget."""
         if self.output_text:
-            self.output_text.config(state=tk.NORMAL)
-            self.output_text.delete(1.0, tk.END)
-            self.output_text.config(state=tk.DISABLED)
+            self.output_text.configure(state="normal")
+            self.output_text.delete("1.0", "end")
+            self.output_text.configure(state="disabled")
 
     def set_status(self, message):
         """Set the status bar message.
@@ -116,5 +112,6 @@ class StatusPanel:
         Args:
             message: The status message to display
         """
-        if self.status_var:
-            self.status_var.set(message[:80] + "..." if len(message) > 80 else message)
+        if hasattr(self, 'status_label'):
+            display_message = message[:80] + "..." if len(message) > 80 else message
+            self.status_label.configure(text=display_message)

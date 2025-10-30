@@ -1,11 +1,10 @@
 """
 Parameter Control Widget for 4K Softsynth Editor
-A reusable slider-value pair control for parameters with enum support
+A reusable slider-value pair control for parameters with enum support using CustomTkinter
 """
 
 from typing import Optional, Callable, Dict, Any
-import tkinter as tk
-from tkinter import ttk
+import customtkinter as ctk
 
 try:
     import synth_engine
@@ -16,11 +15,11 @@ except ImportError:
 class ParameterControl:  # pylint: disable=too-many-instance-attributes
     """A reusable parameter control supporting sliders and dropdowns for enum parameters"""
 
-    def __init__(self, parent: tk.Widget, name: str, config: Dict[str, Any]) -> None:
+    def __init__(self, parent: ctk.CTkBaseClass, name: str, config: Dict[str, Any]) -> None:
         """Initialize a parameter control
 
         Args:
-            parent: Parent tkinter widget
+            parent: Parent CustomTkinter widget
             name: Display name for the parameter
             config: Dict with 'initial_value', 'row', optional 'update_callback', 
                    optional 'min_value', 'max_value', 'step_value', 'param_type', 'type_name',
@@ -40,6 +39,7 @@ class ParameterControl:  # pylint: disable=too-many-instance-attributes
         self.combobox = None
         self.scale = None
         self.entry = None
+        self.current_value = 0  # Initialize current_value attribute
 
         # Check if this is an enum parameter
         self.is_enum = (synth_engine is not None and
@@ -49,19 +49,20 @@ class ParameterControl:  # pylint: disable=too-many-instance-attributes
         # Create the control widgets
         self._create_widgets(parent, config['row'], config['initial_value'])
 
-    def _create_widgets(self, parent: tk.Widget, row: int, initial_value) -> None:
+    def _create_widgets(self, parent: ctk.CTkBaseClass, row: int, initial_value) -> None:
         """Create the label and control widgets (slider+entry for numeric, dropdown for enum)"""
         # Determine type name for display
         type_display = "enum" if self.is_enum else self.type_name
         label_text = f"{self.name} ({type_display}):"
-        ttk.Label(parent, text=label_text).grid(row=row, column=0, sticky=tk.W)
+        label = ctk.CTkLabel(parent, text=label_text)
+        label.grid(row=row, column=0, sticky="w", padx=(5, 10), pady=2)
 
         if self.is_enum:
             self._create_enum_widgets(parent, row, initial_value)
         else:
             self._create_numeric_widgets(parent, row, initial_value)
 
-    def _create_enum_widgets(self, parent: tk.Widget, row: int, initial_value) -> None:
+    def _create_enum_widgets(self, parent: ctk.CTkBaseClass, row: int, initial_value) -> None:
         """Create dropdown widget for enum parameters"""
         # Variable for the dropdown
         if isinstance(initial_value, str):
@@ -74,69 +75,72 @@ class ParameterControl:  # pylint: disable=too-many-instance-attributes
                            if 0 <= initial_index < len(self.enum_options)
                            else "UNKNOWN")
 
-        self.var = tk.StringVar(value=initial_text)
-
-        # Dropdown (Combobox)
-        self.combobox = ttk.Combobox(parent, textvariable=self.var,
-                                    values=self.enum_options,
-                                    state="readonly", width=12)
-        self.combobox.grid(row=row, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
-        self.combobox.bind('<<ComboboxSelected>>', self._on_enum_change)
+        # Dropdown (CTkComboBox) - wider for better visibility
+        self.combobox = ctk.CTkComboBox(parent, values=self.enum_options,
+                                       state="readonly", width=300,
+                                       command=self._on_enum_change)
+        self.combobox.set(initial_text)
+        self.combobox.grid(row=row, column=1, sticky="ew", padx=(5, 5), pady=2)
 
         # No entry field needed for enums - the dropdown shows the value
         # Create empty widget in column 2 to maintain layout
-        ttk.Label(parent, text="").grid(row=row, column=2)
+        ctk.CTkLabel(parent, text="").grid(row=row, column=2)
 
-    def _create_numeric_widgets(self, parent: tk.Widget, row: int, initial_value: float) -> None:
+    def _create_numeric_widgets(self, parent: ctk.CTkBaseClass, row: int,
+                               initial_value: float) -> None:
         """Create slider and entry widgets for numeric parameters"""
-        # Variable for the slider
-        self.var = tk.IntVar(value=int(initial_value))
+        # Store the current value internally
+        self.current_value = int(initial_value)
 
-        # Slider (tkinter Scale doesn't have native step support, so we'll handle it in callbacks)
-        self.scale = ttk.Scale(parent, from_=self.min_val, to=self.max_val,
-                              variable=self.var, orient=tk.HORIZONTAL,
-                              command=self._on_slider_change)
-        self.scale.grid(row=row, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
+        # Slider (CTkSlider) - much wider for better control
+        steps = int((self.max_val - self.min_val) / self.step_val)
+        self.scale = ctk.CTkSlider(parent, from_=self.min_val, to=self.max_val,
+                                  number_of_steps=steps,
+                                  command=self._on_slider_change, width=350)
+        self.scale.set(int(initial_value))
+        self.scale.grid(row=row, column=1, sticky="ew", padx=(5, 5), pady=2)
 
-        # Entry field
-        self.entry = ttk.Entry(parent, width=8, justify=tk.CENTER)
-        self.entry.grid(row=row, column=2, sticky=tk.W, padx=(0, 5))
+        # Entry field - slightly wider
+        self.entry = ctk.CTkEntry(parent, width=100, justify="center")
+        self.entry.grid(row=row, column=2, sticky="w", padx=(5, 5), pady=2)
         self.entry.insert(0, f"{int(initial_value)}")
         self.entry.bind('<Return>', self._on_entry_change)
         self.entry.bind('<FocusOut>', self._on_entry_change)
 
-    def _on_slider_change(self, value: str) -> None:
+    def _on_slider_change(self, value: float) -> None:
         """Handle slider changes for numeric parameters"""
         # Apply step quantization
-        raw_value = int(float(value))
+        raw_value = int(value)
         quantized_value = self._quantize_to_step(raw_value)
 
-        # Update the variable if quantization changed the value
+        # Update the current value and entry
+        self.current_value = quantized_value
         if quantized_value != raw_value:
-            self.var.set(quantized_value)
+            self.scale.set(quantized_value)
 
-        self.entry.delete(0, tk.END)
+        self.entry.delete(0, "end")
         self.entry.insert(0, f"{quantized_value}")
         if self.update_callback:
             self.update_callback()
 
-    def _on_entry_change(self, _event: tk.Event) -> None:
+    def _on_entry_change(self, _event) -> None:
         """Handle entry field changes for numeric parameters"""
         try:
             value = int(float(self.entry.get()))
             value = max(self.min_val, min(self.max_val, value))  # Clamp to valid range
             value = self._quantize_to_step(value)  # Apply step quantization
-            self.var.set(value)
-            self.entry.delete(0, tk.END)
+            self.current_value = value
+            self.scale.set(value)
+            self.entry.delete(0, "end")
             self.entry.insert(0, f"{value}")
             if self.update_callback:
                 self.update_callback()
         except ValueError:
             # Reset to current slider value if invalid input
-            self.entry.delete(0, tk.END)
-            self.entry.insert(0, f"{self.var.get()}")
+            self.entry.delete(0, "end")
+            self.entry.insert(0, f"{self.current_value}")
 
-    def _on_enum_change(self, _event: tk.Event) -> None:
+    def _on_enum_change(self, _selected_value: str) -> None:
         """Handle dropdown changes for enum parameters"""
         if self.update_callback:
             self.update_callback()
@@ -145,13 +149,13 @@ class ParameterControl:  # pylint: disable=too-many-instance-attributes
         """Get the current parameter value as integer (enum index for enum parameters)"""
         if self.is_enum:
             # Return the index of the selected enum option
-            selected_text = self.var.get()
+            selected_text = self.combobox.get()
             try:
                 return self.enum_options.index(selected_text)
             except (ValueError, AttributeError):
                 return 0  # Default to first option if invalid
         else:
-            return self.var.get()
+            return self.current_value
 
     def set_value(self, value) -> None:
         """Set the parameter value programmatically"""
@@ -159,22 +163,23 @@ class ParameterControl:  # pylint: disable=too-many-instance-attributes
             if isinstance(value, str):
                 # Set enum by string name
                 if value in self.enum_options:
-                    self.var.set(value)
+                    self.combobox.set(value)
                 else:
-                    self.var.set("UNKNOWN")
+                    self.combobox.set("UNKNOWN")
             else:
                 # Set enum by index (legacy behavior)
                 index = int(value)
                 if 0 <= index < len(self.enum_options):
-                    self.var.set(self.enum_options[index])
+                    self.combobox.set(self.enum_options[index])
                 else:
-                    self.var.set("UNKNOWN")
+                    self.combobox.set("UNKNOWN")
         else:
             # Set numeric value
             value = int(max(self.min_val, min(self.max_val, value)))
             value = self._quantize_to_step(value)
-            self.var.set(value)
-            self.entry.delete(0, tk.END)
+            self.current_value = value
+            self.scale.set(value)
+            self.entry.delete(0, "end")
             self.entry.insert(0, f"{value}")
 
     def _quantize_to_step(self, value: int) -> int:

@@ -1,7 +1,8 @@
-"""Waveform display component for the audio editor."""
+"""Waveform display component for the audio editor using CustomTkinter."""
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
+import customtkinter as ctk
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -24,10 +25,13 @@ class WaveformDisplay:
 
     def create_visualization_section(self, parent_frame):
         """Create visualization section."""
-        visualization_frame = ttk.LabelFrame(parent_frame, text="Waveform Display",
-                                           padding="5")
-        visualization_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S),
-                               pady=(0, 10))
+        visualization_frame = ctk.CTkFrame(parent_frame, corner_radius=10)
+        visualization_frame.grid(row=1, column=1, sticky="nsew", padx=5, pady=(0, 10))
+
+        # Title label
+        title_label = ctk.CTkLabel(visualization_frame, text="Waveform Display",
+                                  font=ctk.CTkFont(size=16, weight="bold"))
+        title_label.pack(pady=(15, 10))
 
         self.setup_waveform_display(visualization_frame)
 
@@ -50,7 +54,7 @@ class WaveformDisplay:
         # Create canvas
         self.waveform_canvas = FigureCanvasTkAgg(self.waveform_fig, parent_frame)
         self.waveform_canvas.draw()
-        self.waveform_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        self.waveform_canvas.get_tk_widget().pack(fill="both", expand=True, padx=15, pady=(0, 15))
 
         # Show empty state initially
         self._show_empty_waveform_state()
@@ -201,8 +205,8 @@ class WaveformDisplay:
 
     def _create_graph_info_frame(self, graph_window, audio_data):
         """Create info frame with statistics and controls."""
-        info_frame = ttk.Frame(graph_window)
-        info_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
+        info_frame = ctk.CTkFrame(graph_window)
+        info_frame.pack(fill="x", padx=10, pady=(0, 10))
 
         # Audio statistics
         stats_text = (f"Samples: {len(audio_data)} | "
@@ -211,7 +215,12 @@ class WaveformDisplay:
                      f"Max: {np.max(audio_data):.4f} | "
                      f"RMS: {np.sqrt(np.mean(audio_data**2)):.4f}")
 
-        ttk.Label(info_frame, text=stats_text, font=("Arial", 9)).pack(pady=5)
+        stats_label = ctk.CTkLabel(info_frame, text=stats_text,
+                                  font=ctk.CTkFont(size=10))
+        stats_label.pack(pady=10)
 
         # Close button
-        ttk.Button(info_frame, text="Close", command=graph_window.destroy).pack(pady=5)
+        close_button = ctk.CTkButton(info_frame, text="Close",
+                                    command=graph_window.destroy,
+                                    width=100, height=32)
+        close_button.pack(pady=(0, 10))

@@ -1,7 +1,7 @@
-"""Playback controller component for the audio editor."""
+"""Playback controller component for the audio editor using CustomTkinter."""
 
 import tkinter as tk
-from tkinter import ttk
+import customtkinter as ctk
 
 
 class PlaybackController:
@@ -21,26 +21,37 @@ class PlaybackController:
 
     def create_transport_section(self, parent_frame):
         """Create transport control section."""
-        transport_frame = ttk.LabelFrame(parent_frame, text="Song Controls",
-                                       padding="5")
+        transport_frame = ctk.CTkFrame(parent_frame, corner_radius=10)
         transport_frame.grid(row=0, column=0, columnspan=2,
-                           sticky=(tk.W, tk.E), pady=(0, 10))
+                           sticky="ew", padx=5, pady=(0, 10))
 
-        self.play_button = ttk.Button(transport_frame, text="Play",
-                                    command=self.toggle_play)
-        self.play_button.pack(side=tk.LEFT, padx=(0, 5))
+        # Title label
+        title_label = ctk.CTkLabel(transport_frame, text="Song Controls",
+                                  font=ctk.CTkFont(size=16, weight="bold"))
+        title_label.pack(pady=(15, 10))
 
-        ttk.Button(transport_frame, text="Stop",
-                  command=self.stop_playback).pack(side=tk.LEFT, padx=(0, 5))
+        # Button frame
+        button_frame = ctk.CTkFrame(transport_frame, fg_color="transparent")
+        button_frame.pack(fill="x", padx=15, pady=(0, 15))
 
-        ttk.Label(transport_frame, text="Tempo:").pack(side=tk.LEFT,
-                                                      padx=(10, 5))
+        self.play_button = ctk.CTkButton(button_frame, text="Play",
+                                        command=self.toggle_play,
+                                        width=80, height=32)
+        self.play_button.pack(side="left", padx=(0, 10))
+
+        stop_button = ctk.CTkButton(button_frame, text="Stop",
+                                   command=self.stop_playback,
+                                   width=80, height=32)
+        stop_button.pack(side="left", padx=(0, 20))
+
+        ctk.CTkLabel(button_frame, text="Tempo:").pack(side="left", padx=(0, 5))
+        
         self.tempo_var = tk.IntVar(value=125)
-        tempo_spinbox = ttk.Spinbox(transport_frame, from_=60, to=200,
-                                   textvariable=self.tempo_var, width=5)
-        tempo_spinbox.pack(side=tk.LEFT)
-        ttk.Label(transport_frame, text="BPM").pack(side=tk.LEFT,
-                                                   padx=(5, 0))
+        tempo_spinbox = ctk.CTkEntry(button_frame, width=60, justify="center")
+        tempo_spinbox.insert(0, "125")
+        tempo_spinbox.pack(side="left", padx=(0, 5))
+        
+        ctk.CTkLabel(button_frame, text="BPM").pack(side="left")
 
     def toggle_play(self):
         """Toggle play/pause state."""

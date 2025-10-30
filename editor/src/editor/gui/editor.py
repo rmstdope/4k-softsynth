@@ -1,11 +1,10 @@
 """
 Main Editor Application for 4K Softsynth
-Refactored with component architecture
+Refactored with component architecture using CustomTkinter
 """
 
 from typing import Optional, NamedTuple
-import tkinter as tk
-from tkinter import ttk
+import customtkinter as ctk
 
 from editor.audio.synth_wrapper import SynthWrapper
 from editor.audio.audio_device import AudioDevice
@@ -31,7 +30,10 @@ class Editor:
 
     def __init__(self) -> None:
         """Initialize the editor with component architecture."""
-        self.root: Optional[tk.Tk] = None
+        # Set CustomTkinter appearance mode and color theme
+        ctk.set_appearance_mode("dark")  # Modes: "System" (standard), "Dark", "Light"
+        ctk.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
+        self.root: Optional[ctk.CTk] = None
         self.synth: Optional[SynthWrapper] = None
         self.audio: Optional[AudioDevice] = None
         self.logger = setup_logger()
@@ -52,7 +54,7 @@ class Editor:
 
     def create_main_window(self) -> None:
         """Create the main application window with component architecture."""
-        self.root = tk.Tk()
+        self.root = ctk.CTk()
         self.root.title("4K Softsynth Editor")
         self.root.geometry("1200x900")
 
@@ -69,8 +71,8 @@ class Editor:
         self.components.menu_manager.create_menu_bar()
 
         # Create main frame
-        main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        main_frame = ctk.CTkFrame(self.root)
+        main_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
         # Configure grid weights
         self._configure_grid_weights(main_frame)
@@ -106,12 +108,18 @@ class Editor:
         # Initial waveform update - show current instrument waveform at startup
         self.components.waveform_display.auto_update_waveform_from_synth()
 
-    def _configure_grid_weights(self, main_frame: ttk.Frame) -> None:
+    def _configure_grid_weights(self, main_frame: ctk.CTkFrame) -> None:
         """Configure grid weights for responsive layout."""
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
-        main_frame.columnconfigure(1, weight=1)
-        main_frame.rowconfigure(3, weight=1)
+        # Give much more space to instrument panel (column 0) for sliders
+        main_frame.columnconfigure(0, weight=4, minsize=700)  # Instrument panel gets 4/5 of space, min 600px
+        main_frame.columnconfigure(1, weight=1, minsize=200)  # Waveform display gets 1/5 of space, min 200px
+        # Configure all rows properly
+        main_frame.rowconfigure(0, weight=0)  # Transport controls - fixed height
+        main_frame.rowconfigure(1, weight=1)  # Main panels - expandable
+        main_frame.rowconfigure(2, weight=0)  # Output section - fixed height  
+        main_frame.rowconfigure(3, weight=0)  # Status bar - fixed height
 
     def _initialize_audio(self) -> None:
         """Initialize the audio system."""
@@ -141,12 +149,12 @@ class Editor:
         # Make sure the window is focusable
         self.root.focus_force()
 
-    def on_key_press(self, _event: tk.Event) -> None:
+    def on_key_press(self, _event) -> None:
         """Handle general key press events."""
         # You can add other key handlers here if needed
         # Currently handled by specific key bindings like 'q'
 
-    def on_q_key_press(self, _event: tk.Event) -> None:
+    def on_q_key_press(self, _event) -> None:
         """Handle 'q' key press - play synthesizer note."""
         try:
             self.components.status_panel.log_output("🎵 Playing note (Q key pressed)...")
@@ -181,6 +189,6 @@ class Editor:
             self.create_main_window()
             self.root.mainloop()
             return 0
-        except (tk.TclError, RuntimeError) as e:
+        except RuntimeError as e:
             self.logger.error("Application error: %s", e)
             return 1

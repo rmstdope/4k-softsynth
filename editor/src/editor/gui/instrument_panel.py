@@ -1,7 +1,6 @@
-"""Instrument panel component for the audio editor."""
+"""Instrument panel component for the audio editor using CustomTkinter."""
 
-import tkinter as tk
-from tkinter import ttk
+import customtkinter as ctk
 from .parameter_control import ParameterControl
 
 try:
@@ -27,27 +26,29 @@ class InstrumentPanel:
 
     def create_instrument_section(self, parent_frame):
         """Create instrument control section."""
-        instrument_frame = ttk.LabelFrame(parent_frame, text="Instrument Controls",
-                                        padding="5")
-        instrument_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S),
-                            pady=(0, 10))
+        instrument_frame = ctk.CTkFrame(parent_frame, corner_radius=10)
+        instrument_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=(0, 10))
+
+        # Title label
+        title_label = ctk.CTkLabel(instrument_frame, text="Instrument Controls", 
+                                  font=ctk.CTkFont(size=16, weight="bold"))
+        title_label.grid(row=0, column=0, columnspan=2, pady=(15, 10))
 
         # Instrument selector
-        ttk.Label(instrument_frame, text="Instrument:").grid(row=0, column=0,
-                                                           sticky=tk.W)
-        self.instrument_var = tk.StringVar(value="Instrument 0")
+        ctk.CTkLabel(instrument_frame, text="Instrument:").grid(row=1, column=0,
+                                                               sticky="w", padx=(15, 5))
         instrument_values = ["Instrument 0", "Instrument 1",
                            "Instrument 2", "Instrument 3"]
-        instrument_combo = ttk.Combobox(instrument_frame,
-                                      textvariable=self.instrument_var,
-                                      values=instrument_values)
-        instrument_combo.grid(row=0, column=1, sticky=(tk.W, tk.E),
-                            padx=(5, 0))
-        instrument_combo.bind('<<ComboboxSelected>>', self.on_instrument_change)
+        self.instrument_combo = ctk.CTkComboBox(instrument_frame,
+                                               values=instrument_values,
+                                               command=self.on_instrument_change,
+                                               width=150)
+        self.instrument_combo.set("Instrument 0")
+        self.instrument_combo.grid(row=1, column=1, sticky="ew", padx=(5, 15))
 
         # Instrument controls
-        ttk.Label(instrument_frame, text="Instrument controls:").grid(
-            row=1, column=0, columnspan=2, sticky=tk.W, pady=(10, 5))
+        ctk.CTkLabel(instrument_frame, text="Instrument controls:").grid(
+            row=2, column=0, columnspan=2, sticky="w", padx=(15, 5), pady=(15, 5))
 
         self._create_instrument_controllers(instrument_frame)
         instrument_frame.columnconfigure(1, weight=1)
@@ -56,11 +57,11 @@ class InstrumentPanel:
         """Create instrument control sliders with value fields in a scrollable frame."""
         # Create a scrollable frame for all instrument parameter controls
         container_frame, scrollable_frame = self._create_scrollable_frame(parent_frame)
-        container_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S),
-                           pady=(5, 0))
+        container_frame.grid(row=3, column=0, columnspan=2, sticky="nsew",
+                           padx=15, pady=(5, 15))
 
         # Configure parent frame to expand the scrollable area
-        parent_frame.rowconfigure(2, weight=1)
+        parent_frame.rowconfigure(3, weight=1)
 
         # Store reference to scrollable frame for dynamic updates
         self.scrollable_frame = scrollable_frame
@@ -141,11 +142,11 @@ class InstrumentPanel:
 
     def _create_instruction_header(self, instr_name, row):
         """Create a header label for an instruction section."""
-        header_label = ttk.Label(self.scrollable_frame,
-                               text=f"🎛️ {instr_name}",
-                               font=('TkDefaultFont', 9, 'bold'))
+        header_label = ctk.CTkLabel(self.scrollable_frame,
+                                   text=f"🎛️ {instr_name}",
+                                   font=ctk.CTkFont(size=12, weight="bold"))
         header_label.grid(row=row, column=0, columnspan=3,
-                         sticky=tk.W, pady=(10, 5))
+                         sticky="w", pady=(10, 5))
 
     def _create_single_parameter_control(self, param_info):
         """Create a single parameter control.
@@ -276,9 +277,9 @@ class InstrumentPanel:
         return initial_value
 
     def _update_scroll_region(self):
-        """Update the canvas scroll region."""
-        self.scrollable_frame.update_idletasks()
-        self.container_frame.canvas.configure(scrollregion=self.container_frame.canvas.bbox("all"))
+        """Update the scroll region - CTkScrollableFrame handles this automatically."""
+        # CustomTkinter's CTkScrollableFrame handles scrolling automatically
+        pass
 
     def _clear_instrument_controls(self):
         """Clear all existing instrument parameter controls."""
@@ -295,16 +296,16 @@ class InstrumentPanel:
 
     def _show_no_instrument_message(self):
         """Show message when no instrument is available."""
-        msg_label = ttk.Label(self.scrollable_frame,
-                            text="❌ No instrument data available",
-                            foreground="red")
+        msg_label = ctk.CTkLabel(self.scrollable_frame,
+                               text="❌ No instrument data available",
+                               text_color="red")
         msg_label.grid(row=0, column=0, pady=20)
 
     def _show_no_parameters_message(self):
         """Show message when instrument has no parameters."""
-        msg_label = ttk.Label(self.scrollable_frame,
-                            text="ℹ️ This instrument has no configurable parameters",
-                            foreground="gray")
+        msg_label = ctk.CTkLabel(self.scrollable_frame,
+                               text="ℹ️ This instrument has no configurable parameters",
+                               text_color="gray")
         msg_label.grid(row=0, column=0, pady=20)
 
     def _on_instrument_parameter_change(self, instruction_index, param_index):
@@ -361,59 +362,21 @@ class InstrumentPanel:
             instruction_index, param_index)
 
     def _create_scrollable_frame(self, parent):
-        """Create a scrollable frame with canvas and scrollbar."""
-        # Create main container frame
-        container_frame = ttk.Frame(parent)
+        """Create a scrollable frame using CustomTkinter's CTkScrollableFrame."""
+        # Create scrollable frame - CustomTkinter handles scrolling internally
+        # Increased height to provide more space for parameter controls
+        scrollable_frame = ctk.CTkScrollableFrame(parent, height=300, corner_radius=10)
+        
+        # Configure grid columns for parameter controls with wider sliders
+        scrollable_frame.columnconfigure(0, weight=0, minsize=150)  # Label column - wider for readability
+        scrollable_frame.columnconfigure(1, weight=5, minsize=300)  # Slider column - much wider and expandable
+        scrollable_frame.columnconfigure(2, weight=0, minsize=100)  # Value field column - slightly wider
 
-        # Create canvas and scrollbar
-        canvas = tk.Canvas(container_frame, height=150, highlightthickness=0)
-        scrollbar = ttk.Scrollbar(container_frame, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
+        return scrollable_frame, scrollable_frame
 
-        # Configure scrolling
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-
-        # Create window in canvas
-        canvas_window = canvas.create_window((0, 0), window=scrollable_frame,
-                                            anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        # Configure scrollable frame to expand to canvas width
-        def _on_canvas_configure(event):
-            canvas.itemconfig(canvas_window, width=event.width)
-
-        canvas.bind('<Configure>', _on_canvas_configure)
-
-        # Configure grid columns for ADSR controls
-        scrollable_frame.columnconfigure(0, weight=0)  # Label column
-        scrollable_frame.columnconfigure(1, weight=10)  # Slider column - wider sliders
-        scrollable_frame.columnconfigure(2, weight=0)  # Value field column
-
-        # Pack canvas and scrollbar
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        # Bind mousewheel to canvas for better UX
-        def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-
-        canvas.bind("<MouseWheel>", _on_mousewheel)  # Windows/Mac
-        canvas.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # Linux
-        canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))   # Linux
-
-        # Store references for later access if needed
-        container_frame.scrollable_frame = scrollable_frame
-        container_frame.canvas = canvas
-
-        return container_frame, scrollable_frame
-
-    def on_instrument_change(self, _event):
+    def on_instrument_change(self, instrument_text):
         """Handle instrument selection change."""
         # Update current instrument based on selection
-        instrument_text = self.instrument_var.get()
         try:
             # Extract instrument number from "Instrument X" format
             instrument_num = int(instrument_text.split()[-1])

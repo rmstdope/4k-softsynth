@@ -1,4 +1,4 @@
-"""Menu management component for the audio editor."""
+"""Menu management component for the audio editor using CustomTkinter."""
 
 import tkinter as tk
 from tkinter import messagebox
