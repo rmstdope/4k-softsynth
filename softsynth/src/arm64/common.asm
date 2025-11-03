@@ -81,6 +81,24 @@
 .equ STOREVAL_ADD,  0x8000
 .equ STOREVAL_MASK, 0x3FFF
 
+.macro FILTER frequency, resonance, type
+    .byte \frequency
+    .byte \resonance
+    .byte \type
+.endmacro
+#define FILTER_FREQUENCY(val) val
+#define FILTER_RESONANCE(val) val
+#define FILTER_TYPE(val) val
+.equ FILTER_WS_LOW,             0
+.equ FILTER_WS_BAND,            FILTER_WS_LOW + 4
+.equ FILTER_WS_FREQUENCY_MOD,   FILTER_WS_BAND + 4
+.equ FILTER_WS_RESONANCE_MOD,   FILTER_WS_FREQUENCY_MOD + 4
+.equ FILTER_WS_SIZE,            FILTER_WS_RESONANCE_MOD + 4
+.equ FILTER_PARAM_FREQUENCY,    0
+.equ FILTER_PARAM_RESONANCE,    FILTER_PARAM_FREQUENCY + 4
+.equ FILTER_PARAM_TYPE,         FILTER_PARAM_RESONANCE + 4
+.equ FILTER_PARAM_SIZE,         FILTER_PARAM_TYPE + 4
+
 .macro OPERATION operand
     .byte \operand
 .endmacro

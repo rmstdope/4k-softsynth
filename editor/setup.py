@@ -96,6 +96,7 @@ ext_modules = [
         [
             "src/editor/cpp/synth_bindings.cpp",
             "src/editor/cpp/instrument.cpp",
+            "src/editor/cpp/synth_engine.cpp",
         ],
         include_dirs=[
             # Path to pybind11 headers

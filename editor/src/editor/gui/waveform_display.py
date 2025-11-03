@@ -69,7 +69,7 @@ class WaveformDisplay:
 
             # Get audio data from synthesizer
             audio_data = self.main_editor.synth.render_instrument_note(
-                self.main_editor.current_instrument, 64)
+                self.main_editor.current_instrument, 20)
 
             if audio_data is not None and len(audio_data) > 0:
                 self._update_waveform_plot(audio_data)

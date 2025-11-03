@@ -4,82 +4,10 @@
  */
 
 #include "instrument.h"
+#include "parameters.h"
 #include <iostream>
 #include <iomanip>
 #include <cmath>
-
-// Parameter data types
-enum class ParameterType : uint8_t
-{
-    UINT8 = 0,
-    UINT16 = 1,
-    ENUM = 2
-};
-
-// Parameter range information including step
-struct ParameterRange
-{
-    int min_value;
-    int max_value;
-    int step;
-
-    ParameterRange(int min_val, int max_val, int step_val = 1)
-        : min_value(min_val), max_value(max_val), step(step_val) {}
-};
-
-// Enum parameter value mapping
-struct EnumValue
-{
-    uint8_t value;
-    std::string name;
-
-    EnumValue(uint8_t val, const std::string &n) : value(val), name(n) {}
-};
-
-// Enum parameter definition
-struct ParameterEnum
-{
-    std::vector<EnumValue> values;
-
-    ParameterEnum(const std::vector<EnumValue> &enum_values) : values(enum_values) {}
-
-    // Get string name for uint8_t value
-    std::string get_name(uint8_t value) const
-    {
-        for (const auto &enum_val : values)
-        {
-            if (enum_val.value == value)
-            {
-                return enum_val.name;
-            }
-        }
-        return "UNKNOWN";
-    }
-
-    // Get uint8_t value for string name
-    uint8_t get_value(const std::string &name) const
-    {
-        for (const auto &enum_val : values)
-        {
-            if (enum_val.name == name)
-            {
-                return enum_val.value;
-            }
-        }
-        return 0; // Default to first value if not found
-    }
-
-    // Get all available names
-    std::vector<std::string> get_names() const
-    {
-        std::vector<std::string> names;
-        for (const auto &enum_val : values)
-        {
-            names.push_back(enum_val.name);
-        }
-        return names;
-    }
-};
 
 // Debug logging macro
 #ifdef DEBUG
@@ -406,8 +334,9 @@ void Instrument::update_parameter_with_string(uint32_t instruction_index, uint32
 
 std::vector<float> Instrument::render_note(uint32_t note_num)
 {
-    int num_samples = SAMPLES_PER_NOTE * 4;
-    DEBUG_LOG("Instrument " << id_ << " rendering note " << note_num);
+    int num_notes = 10;
+    int num_samples = SAMPLES_PER_NOTE * num_notes;
+    DEBUG_LOG("Instrument " << id_ << " rendering " << num_samples << " samples for note " << note_num);
     std::vector<float> output(num_samples);
 
     debug_start_instrument_note(id_, note_num);
@@ -415,7 +344,7 @@ std::vector<float> Instrument::render_note(uint32_t note_num)
     // Render samples with hold and release phases
     for (int i = 0; i < num_samples; i++)
     {
-        uint8_t release = (i >= SAMPLES_PER_NOTE * 3) ? 1 : 0;
+        uint8_t release = (i >= SAMPLES_PER_NOTE * (num_notes - 2)) ? 1 : 0;
         debug_next_instrument_sample(id_, &output[i], release);
     }
 
@@ -534,11 +463,12 @@ uint32_t Instrument::get_instruction_param_count(int instruction_id) const
         return 8;
     case STOREVAL_ID:
         return 2; // Changed from 3 to 2: Amount + merged Destination
+    case FILTER_ID:
+        return 3; // Frequency, Resonance, Type
     case OPERATION_ID:
         return 1;
     case OUTPUT_ID:
         return 1;
-    case FILTER_ID:
     case PANNING_ID:
         return 1; // Assuming 1 parameter each
     default:
@@ -561,6 +491,7 @@ uint32_t Instrument::get_instruction_memory_size(int instruction_id) const
     case OUTPUT_ID:
         return 1; // 1 uint8 parameter
     case FILTER_ID:
+        return 3; // Frequency (1 byte) + Resonance (1 byte) + Type (1 byte) = 3 bytes total
     case PANNING_ID:
         return 1; // 1 uint8 parameter each
     default:
@@ -608,7 +539,7 @@ std::vector<std::string> Instrument::get_parameter_names_for_instruction(int ins
     case OUTPUT_ID:
         return {"Gain"};
     case FILTER_ID:
-        return {"Cutoff"};
+        return {"Frequency", "Resonance", "Type"};
     case PANNING_ID:
         return {"Position"};
     case ACCUMULATE_ID:
@@ -633,7 +564,7 @@ std::vector<ParameterRange> Instrument::get_parameter_ranges_for_instruction(int
                 ParameterRange(0, 128), ParameterRange(0, 7)};
     case STOREVAL_ID:
         // Amount (step=1), Destination (uint16, larger step for coarse control)
-        return {ParameterRange(0, 255), ParameterRange(0, 65535, 4)};
+        return {ParameterRange(0, 128), ParameterRange(0, 65535, 4)};
     case OPERATION_ID:
         // Operand (step=1)
         return {ParameterRange(0, 15)};
@@ -641,8 +572,8 @@ std::vector<ParameterRange> Instrument::get_parameter_ranges_for_instruction(int
         // Gain (step=1)
         return {ParameterRange(0, 128)};
     case FILTER_ID:
-        // Cutoff (step=1)
-        return {ParameterRange(0, 255)};
+        // Frequency (step=1), Resonance (step=1), Type (enum)
+        return {ParameterRange(0, 128), ParameterRange(0, 128), ParameterRange(0, 2)};
     case PANNING_ID:
         // Position (-64 to +63, but we'll map 0-127, step=1)
         return {ParameterRange(0, 127)};
@@ -685,8 +616,10 @@ std::vector<uint8_t> Instrument::get_parameter_types_for_instruction(int instruc
         // Gain - uint8_t for now
         return {static_cast<uint8_t>(ParameterType::UINT8)};
     case FILTER_ID:
-        // Cutoff - uint8_t for now
-        return {static_cast<uint8_t>(ParameterType::UINT8)};
+        // Frequency, Resonance - uint8_t, Type - enum
+        return {static_cast<uint8_t>(ParameterType::UINT8),
+                static_cast<uint8_t>(ParameterType::UINT8),
+                static_cast<uint8_t>(ParameterType::ENUM)};
     case PANNING_ID:
         // Position - uint8_t for now
         return {static_cast<uint8_t>(ParameterType::UINT8)};
@@ -727,6 +660,17 @@ std::vector<ParameterEnum> Instrument::get_parameter_enums_for_instruction(int i
             ParameterEnum({// Operand - enum (using operator values from defines.h)
                            EnumValue(OPERATOR_MUL, "Multiply"),
                            EnumValue(OPERATOR_MULP, "Multiply and Pop")})};
+    case FILTER_ID:
+        return {
+            ParameterEnum({}), // Frequency - not enum
+            ParameterEnum({}), // Resonance - not enum
+            ParameterEnum({    // Type - enum
+                           EnumValue(FILTER_LOWPASS, "Low Pass"),
+                           EnumValue(FILTER_HIGHPASS, "High Pass"),
+                           EnumValue(FILTER_BANDSTOP, "Band Stop"),
+                           EnumValue(FILTER_BANDPASS, "Band Pass"),
+                           EnumValue(FILTER_ALLPASS, "All Pass"),
+                           EnumValue(FILTER_PEAK, "Peak")})};
     default:
         return {};
     }

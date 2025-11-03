@@ -158,6 +158,7 @@
 				}
 			]
 		},
+
 		{
 			"name": "Debug test_softsynth",
 			"type": "cppdbg",
@@ -180,7 +181,321 @@
 					"text": "settings set target.inline-breakpoint-strategy always"
 				}
 			]
-		}
+		},
+		{
+			"name": "Debug test_oscillator",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/softsynth/bin/test_oscillator",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/softsynth",
+			"environment": [],
+			"externalConsole": false,
+			"MIMode": "lldb",
+			"preLaunchTask": "make",
+			"sourceFileMap": {
+				"${workspaceFolder}/softsynth/src": "${workspaceFolder}/softsynth/src",
+				"${workspaceFolder}/softsynth/test": "${workspaceFolder}/softsynth/test"
+			},
+			"setupCommands": [
+				{
+					"description": "Enable assembly debugging",
+					"text": "settings set target.inline-breakpoint-strategy always"
+				}
+			]
+		},
+		{
+			"name": "Debug test_envelope",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/softsynth/bin/test_envelope",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/softsynth",
+			"environment": [],
+			"externalConsole": false,
+			"MIMode": "lldb",
+			"preLaunchTask": "make",
+			"sourceFileMap": {
+				"${workspaceFolder}/softsynth/src": "${workspaceFolder}/softsynth/src",
+				"${workspaceFolder}/softsynth/test": "${workspaceFolder}/softsynth/test"
+			},
+			"setupCommands": [
+				{
+					"description": "Enable assembly debugging",
+					"text": "settings set target.inline-breakpoint-strategy always"
+				}
+			]
+		},
+		{
+			"name": "Debug test_filter",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/softsynth/bin/test_filter",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/softsynth",
+			"environment": [],
+			"externalConsole": false,
+			"MIMode": "lldb",
+			"preLaunchTask": "make",
+			"sourceFileMap": {
+				"${workspaceFolder}/softsynth/src": "${workspaceFolder}/softsynth/src",
+				"${workspaceFolder}/softsynth/test": "${workspaceFolder}/softsynth/test"
+			},
+			"setupCommands": [
+				{
+					"description": "Enable assembly debugging",
+					"text": "settings set target.inline-breakpoint-strategy always"
+				}
+			]
+		},
+		{
+			"name": "Debug test_arithmetic",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/softsynth/bin/test_arithmetic",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/softsynth",
+			"environment": [],
+			"externalConsole": false,
+			"MIMode": "lldb",
+			"preLaunchTask": "make",
+			"sourceFileMap": {
+				"${workspaceFolder}/softsynth/src": "${workspaceFolder}/softsynth/src",
+				"${workspaceFolder}/softsynth/test": "${workspaceFolder}/softsynth/test"
+			},
+			"setupCommands": [
+				{
+					"description": "Enable assembly debugging",
+					"text": "settings set target.inline-breakpoint-strategy always"
+				}
+			]
+		},
+		{
+			"name": "Debug test_accumulate",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/softsynth/bin/test_accumulate",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/softsynth",
+			"environment": [],
+			"externalConsole": false,
+			"MIMode": "lldb",
+			"preLaunchTask": "make",
+			"sourceFileMap": {
+				"${workspaceFolder}/softsynth/src": "${workspaceFolder}/softsynth/src",
+				"${workspaceFolder}/softsynth/test": "${workspaceFolder}/softsynth/test"
+			},
+			"setupCommands": [
+				{
+					"description": "Enable assembly debugging",
+					"text": "settings set target.inline-breakpoint-strategy always"
+				}
+			]
+		},
+		{
+			"name": "Debug test_storeval",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/softsynth/bin/test_storeval",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/softsynth",
+			"environment": [],
+			"externalConsole": false,
+			"MIMode": "lldb",
+			"preLaunchTask": "make",
+			"sourceFileMap": {
+				"${workspaceFolder}/softsynth/src": "${workspaceFolder}/softsynth/src",
+				"${workspaceFolder}/softsynth/test": "${workspaceFolder}/softsynth/test"
+			},
+			"setupCommands": [
+				{
+					"description": "Enable assembly debugging",
+					"text": "settings set target.inline-breakpoint-strategy always"
+				}
+			]
+		},
+		{
+			"name": "Debug test_processing",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/softsynth/bin/test_processing",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/softsynth",
+			"environment": [],
+			"externalConsole": false,
+			"MIMode": "lldb",
+			"preLaunchTask": "make",
+			"sourceFileMap": {
+				"${workspaceFolder}/softsynth/src": "${workspaceFolder}/softsynth/src",
+				"${workspaceFolder}/softsynth/test": "${workspaceFolder}/softsynth/test"
+			},
+			"setupCommands": [
+				{
+					"description": "Enable assembly debugging",
+					"text": "settings set target.inline-breakpoint-strategy always"
+				}
+			]
+		},
+		{
+			"name": "Debug test_output",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/softsynth/bin/test_output",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/softsynth",
+			"environment": [],
+			"externalConsole": false,
+			"MIMode": "lldb",
+			"preLaunchTask": "make",
+			"sourceFileMap": {
+				"${workspaceFolder}/softsynth/src": "${workspaceFolder}/softsynth/src",
+				"${workspaceFolder}/softsynth/test": "${workspaceFolder}/softsynth/test"
+			},
+			"setupCommands": [
+				{
+					"description": "Enable assembly debugging",
+					"text": "settings set target.inline-breakpoint-strategy always"
+				}
+			]
+		},
+		{
+			"name": "Run test_softsynth",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/softsynth/bin/test_softsynth",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/softsynth",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "lldb",
+			"preLaunchTask": "run_test_softsynth"
+		},
+		{
+			"name": "Run test_oscillator",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/softsynth/bin/test_oscillator",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/softsynth",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "lldb",
+			"preLaunchTask": "run_test_oscillator"
+		},
+		{
+			"name": "Run test_envelope",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/softsynth/bin/test_envelope",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/softsynth",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "lldb",
+			"preLaunchTask": "run_test_envelope"
+		},
+		{
+			"name": "Run test_filter",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/softsynth/bin/test_filter",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/softsynth",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "lldb",
+			"preLaunchTask": "run_test_filter"
+		},
+		{
+			"name": "Run test_arithmetic",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/softsynth/bin/test_arithmetic",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/softsynth",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "lldb",
+			"preLaunchTask": "run_test_arithmetic"
+		},
+		{
+			"name": "Run test_accumulate",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/softsynth/bin/test_accumulate",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/softsynth",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "lldb",
+			"preLaunchTask": "run_test_accumulate"
+		},
+		{
+			"name": "Run test_storeval",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/softsynth/bin/test_storeval",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/softsynth",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "lldb",
+			"preLaunchTask": "run_test_storeval"
+		},
+		{
+			"name": "Run test_processing",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/softsynth/bin/test_processing",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/softsynth",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "lldb",
+			"preLaunchTask": "run_test_processing"
+		},
+		{
+			"name": "Run test_output",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/softsynth/bin/test_output",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/softsynth",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "lldb",
+			"preLaunchTask": "run_test_output"
+		},
+		{
+			"name": "Run All Tests",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "/usr/bin/make",
+			"args": ["run_tests"],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/softsynth",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "lldb",
+			"preLaunchTask": "make"
+		},
 	],
 	"inputs": [
 		{

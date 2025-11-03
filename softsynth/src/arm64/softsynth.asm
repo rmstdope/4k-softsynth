@@ -42,6 +42,8 @@
 #define operation_function _operation_function
 .global _oscillator_function
 #define oscillator_function _oscillator_function
+.global _filter_function
+#define filter_function _filter_function
 .global _output_function
 #define output_function _output_function
 .global _accumulate_function
@@ -56,8 +58,14 @@
 #define debug_start_instrument_note _debug_start_instrument_note
 .global _debug_next_instrument_sample
 #define debug_next_instrument_sample _debug_next_instrument_sample
+.global _debug_setup_sx_registers
+#define debug_setup_sx_registers _debug_setup_sx_registers
 .global _synth_data
 #define synth_data _synth_data
+.global _cosine_waveform
+#define cosine_waveform _cosine_waveform
+.global _pwr
+#define pwr _pwr
 
 // Song data
 .extern _instrument_instructions
@@ -155,20 +163,35 @@ debug_set_instrument_pointers_loop:
     b.ne    3f
     add     x4, x4, #3
 3:
-    cmp     w13, #OUTPUT_ID
+    cmp     w13, #FILTER_ID
     b.ne    4f
-    add     x4, x4, #1
+    add     x4, x4, #3
 4:
-    cmp     w13, #OPERATION_ID
+    cmp     w13, #OUTPUT_ID
     b.ne    5f
     add     x4, x4, #1
 5:
-    cmp     w13, #INSTRUMENT_END
+    cmp     w13, #OPERATION_ID
     b.ne    6f
-    add     x3, x3, #1
+    add     x4, x4, #1
 6:
+    cmp     w13, #INSTRUMENT_END
+    b.ne    7f
+    add     x3, x3, #1
+7:
     b       debug_set_instrument_pointers_loop
 debug_set_instrument_pointers_end:
+    ret
+
+///
+/// Set up the s26-s31 registers
+debug_setup_sx_registers:
+    fmov        s31, #0.5
+    ldr         s30, inv_128_const
+    ldr         s29, inv_12_const
+    fmov        s28, #1.0
+    ldr         s27, pi2_const
+    fmov        s26, #-1.0
     ret
 
 #endif // DEBUG
@@ -477,74 +500,89 @@ envelope_map:
 /// Compute pow(2, s1) = 2^s1
 /// Input: s1 = x
 /// Output: s1 = 2^x
-/// Destroyed registers: x11, s2, s3, s4, s5, s6, s7, s8
+/// Destroyed registers: x11, x12, s2, s3, s4, s5, s6, s7, s8
 pwr:
-    // Method: 2^x = exp(x * ln(2))
-    // First compute x * ln(2)
-    ldr     s2, ln2_const           // s2 = ln(2) ≈ 0.693147
-    fmul    s3, s1, s2              // s3 = x * ln(2)
+    // Better method: 2^x = 2^(int_part + frac_part) = 2^int_part * 2^frac_part
+    // Split x into integer and fractional parts directly
     
-    // Now compute exp(s3) using Taylor series approximation
-    // exp(x) ≈ 1 + x + x²/2! + x³/3! + x⁴/4! + x⁵/5!
-    
-    // For better accuracy over larger range, we split x into integer and fractional parts
-    // exp(x) = exp(int_part + frac_part) = exp(int_part) * exp(frac_part)
-    // exp(int_part) = 2^(int_part / ln(2))
+    // Handle special cases
+    fmov    s2, #0.0
+    fcmp    s1, s2
+    beq     .pwr_return_one         // 2^0 = 1
     
     // Split into integer and fractional parts
-    fcvtzs  w12, s3                 // w12 = integer part of x*ln(2)
-    scvtf   s4, w12                 // s4 = float(integer part)
-    fsub    s5, s3, s4              // s5 = fractional part
+    fcvtzs  w12, s1                 // w12 = integer part of x
+    scvtf   s3, w12                 // s3 = float(integer part)
+    fsub    s4, s1, s3              // s4 = fractional part
     
-    // Compute exp(fractional_part) using Taylor series
-    // exp(x) ≈ 1 + x + x²/2 + x³/6 + x⁴/24 + x⁵/120
-    fmov    s6, #1.0                // s6 = 1.0 (result accumulator)
+    // Compute 2^frac_part using polynomial approximation
+    // For x in [0,1], 2^x ≈ 1 + 0.693147*x + 0.240226*x² + 0.0555041*x³ + 0.00961812*x⁴
+    // These are optimized coefficients for 2^x (not exp(x))
     
-    // First term: x
-    fadd    s6, s6, s5              // s6 = 1 + x
+    ldr     s5, pwr_c1              // s5 = 0.693147
+    ldr     s6, pwr_c2              // s6 = 0.240226  
+    ldr     s7, pwr_c3              // s7 = 0.0555041
+    ldr     s8, pwr_c4              // s8 = 0.00961812
     
-    // Second term: x²/2
-    fmul    s7, s5, s5              // s7 = x²
-    fmov    s8, #2.0
-    fdiv    s7, s7, s8              // s7 = x²/2
-    fadd    s6, s6, s7              // s6 = 1 + x + x²/2
+    // Calculate polynomial: 1 + c1*x + c2*x² + c3*x³ + c4*x⁴
+    fmov    s2, #1.0                // s2 = result = 1.0
     
-    // Third term: x³/6
-    fmul    s7, s7, s5              // s7 = x³ (reusing previous x²)
-    fmov    s8, #3.0
-    fdiv    s7, s7, s8              // s7 = x³/6
-    fadd    s6, s6, s7              // s6 = 1 + x + x²/2 + x³/6
+    // s2 += c1 * x
+    fmul    s3, s5, s4              // s3 = c1 * x
+    fadd    s2, s2, s3              // s2 = 1 + c1*x
     
-    // Fourth term: x⁴/24
-    fmul    s7, s7, s5              // s7 = x⁴
-    fmov    s8, #4.0
-    fdiv    s7, s7, s8              // s7 = x⁴/24
-    fadd    s6, s6, s7              // s6 = 1 + x + x²/2 + x³/6 + x⁴/24
+    // s2 += c2 * x²
+    fmul    s3, s4, s4              // s3 = x²
+    fmul    s3, s6, s3              // s3 = c2 * x²
+    fadd    s2, s2, s3              // s2 = 1 + c1*x + c2*x²
     
-    // Now handle the integer part: 2^(int_part / ln(2))
+    // s2 += c3 * x³
+    fmul    s3, s3, s4              // s3 = x³ (reusing x² * x)
+    fmul    s3, s7, s3              // s3 = c3 * x³
+    fadd    s2, s2, s3              // s2 = 1 + c1*x + c2*x² + c3*x³
+    
+    // s2 += c4 * x⁴
+    fmul    s3, s3, s4              // s3 = x⁴ (reusing x³ * x)
+    fmul    s3, s8, s3              // s3 = c4 * x⁴
+    fadd    s2, s2, s3              // s2 = 1 + c1*x + c2*x² + c3*x³ + c4*x⁴
+    
+    // Now handle the integer part: 2^int_part
     cmp     w12, #0
     beq     .pwr_no_int_part
     bmi     .pwr_negative_int_part
     
     // Positive integer part: multiply by 2^int_part
+    // Clamp to reasonable range to avoid overflow
+    cmp     w12, #30
+    b.le    1f
+    mov     w12, #30                // Clamp to avoid overflow
+1:
     mov     w11, #1
     lsl     w11, w11, w12           // w11 = 2^int_part
-    scvtf   s7, w11                 // s7 = 2^int_part as float
-    fmul    s6, s6, s7              // s6 = exp(frac) * 2^int
+    scvtf   s3, w11                 // s3 = 2^int_part as float
+    fmul    s2, s2, s3              // s2 = 2^frac * 2^int
     b       .pwr_no_int_part
     
 .pwr_negative_int_part:
     // Negative integer part: divide by 2^abs(int_part)
     neg     w12, w12                // w12 = abs(int_part)
+    // Clamp to reasonable range
+    cmp     w12, #30
+    b.le    2f
+    mov     w12, #30                // Clamp to avoid underflow
+2:
     mov     w11, #1
     lsl     w11, w11, w12           // w11 = 2^abs(int_part)
-    scvtf   s7, w11                 // s7 = 2^abs(int_part) as float
-    fdiv    s6, s6, s7              // s6 = exp(frac) / 2^abs(int)
+    scvtf   s3, w11                 // s3 = 2^abs(int_part) as float
+    fdiv    s2, s2, s3              // s2 = 2^frac / 2^abs(int)
     
 .pwr_no_int_part:
-    // Result is in s6, move to s1
-    fmov    s1, s6
+    // Result is in s2, move to s1
+    fmov    s1, s2
+    ret
     
+.pwr_return_one:
+    fmov    s1, #1.0
     ret
 
 ///
@@ -561,6 +599,39 @@ pwr:
 ///     x8 = VM stack data pointer
 ///     x9 = transformed instrument instruction parameters pointer
 ///     x10 = synth data pointer
+///
+/// Pseudo code:
+///     x_param = [0..1]
+///     x_mod = [-1..1]
+///     transpose_offset = 128 * ((transpose_param - 0.5) + transpose_mod)
+///     detune_offset = 2 × (detune_param - 0.5) + detune_mod
+///     combined_offset = transpose_offset + detune_offset
+///     if (!LFO_mode):
+///         note_value = note + combined_offset
+///     else:
+///         note_value = combined_offset
+///
+///     frequency = power(2, note_value / 12)
+///
+///     if (LFO_mode):
+///         frequency = frequency × LFO_NORMALIZE
+///     else:
+///         frequency = frequency × FREQ_NORMALIZE
+///     new_phase = (old_phase + frequency + frequency_mod) mod 1
+///     final_phase = (new_phase + phase_mod + phase_param) mod 1
+///     color = color_param + color_mod
+///     output = 0
+///     if (SINE flag):
+///         output += sine_wave(final_phase, color)
+///     if (TRISAW flag):
+///         output += trisaw_wave(final_phase, color)
+///     if (PULSE flag):
+///         output += pulse_wave(final_phase, color)
+///     if (GATE flag):
+///         output += gate_wave(final_phase, color)
+///     if (NOISE flag):
+///         output = random_noise()  // replaces other waveforms
+///     final_output = output × (gain + gm)
 _oscillator_function:
     PUSH_LINK_REGISTER
     // Transform parameters
@@ -579,6 +650,7 @@ _oscillator_function:
     // s0 = transpose value [-128..128] + detune value [-1..1]
     ldr         s1, [x9, #OSCILLATOR_PARAM_DETUNE]
     fsub        s1, s1, s31
+    fdiv        s1, s1, s31
     fadd        s0, s0, s1
     ldr         s2, [x7, #OSCILLATOR_WS_DETUNE_MOD]
     fadd        s0, s0, s2
@@ -605,7 +677,8 @@ _oscillator_function:
     fadd        s0, s0, s1
     ldr         s1, [x7, #OSCILLATOR_WS_FREQUENCY_MOD]
     fadd        s0, s0, s1
-    // Normalize phase to [0, 1) range: extract fractional part
+    // Normalize phase to [0, 1) range: extract fractional part 
+    // TODO is this really necessary? I believe not if notes are not played for a very long time
     fadd        s0, s0, s28
     frintm      s1, s0
     fsub        s0, s0, s1
@@ -621,7 +694,7 @@ _oscillator_function:
     fadd        s0, s0, s28
     frintm      s1, s0
     fsub        s0, s0, s1
-    // Add color
+    // Calculate color
     ldr         s1, [x9, #OSCILLATOR_PARAM_COLOR]
     ldr         s2, [x7, #OSCILLATOR_WS_COLOR_MOD]
     fadd        s1, s1, s2
@@ -655,9 +728,12 @@ _oscillator_function:
     POP_LINK_REGISTER
     ret
 
-// Input: s0 = phase, s1 = color
-// Output: s0 ≈ cos(2*pi*phase/color)
-// Uses: s2, s3, s4, s5, s6,
+///
+/// Cosine waveform function
+///
+/// Input: s0 = phase, s1 = color
+/// Output: s0 ≈ cos(2*pi*phase/color)
+/// Uses: s2, s3, s4, s5, s6, x3, x7, w11
 cosine_waveform:
     // If color < phase, output 0.0
     fcmp    s0, s1
@@ -668,18 +744,9 @@ cosine_waveform:
     // Calculate s1 = 2pi * phase / color
     fdiv    s1, s0, s1
     fmul    s1, s1, s27
-    // // Reduce x to [0, 2*pi)
-    // LOAD_ADDR x3, pi2_const
-    // ldr s2, [x3]                // s2 = 2*pi
-    // fdiv s3, s1, s2             // s3 = x / (2*pi)
-    // frintm s3, s3               // s3 = floor(x / 2*pi)
-    // fmul s3, s3, s2             // s3 = floor(x/2*pi) * 2*pi
-    // fsub s1, s1, s3             // s1 = x - floor(x/2*pi)*2*pi, now s1 in [0, 2*pi)
-
-
     // If x > pi, cos(x) = -cos(x - pi)
-    LOAD_ADDR x3, pi_const
-    ldr s4, [x3]                // s4 = pi
+    LOAD_ADDR x13, pi_const
+    ldr s4, [x13]                // s4 = pi
     fcmp s1, s4
     b.le 1f
     fsub s1, s1, s4             // s1 = x - pi
@@ -704,8 +771,8 @@ cosine_waveform:
 
     // Load coefficients
     fmov s4, #0.5
-    LOAD_ADDR x7, cos_c4
-    ldr s5, [x7]
+    LOAD_ADDR x13, cos_c4
+    ldr s5, [x13]
 
     // Compute polynomial: 1 - 0.5*x^2 + 0.0416666*x^4
     fmov s6, #1.0
@@ -722,7 +789,7 @@ cosine_waveform:
 
 
 ///
-/// Store value function
+/// Store latest instruction output * value function
 ///
 /// Input registers:
 ///     x0 = current note #
@@ -766,6 +833,100 @@ storeval_function:
 .no_add:
     // Store result
     str         s1, [x5, w16, uxtw #0]
+    POP_LINK_REGISTER
+    ret
+
+///
+/// SVF - State Variable Filter
+///
+/// Input registers:
+///     x0 = current note #
+///     x2 = current sample #
+///     x3 = current instrument #
+///     x4 = current instrument parameters pointer
+///     x5 = instrument data pointer
+///     x6 = instrument instructions pointer
+///     x7 = instrument instruction workspace pointer
+///     x8 = VM stack data pointer
+///     x9 = transformed instrument instruction parameters pointer
+///     x10 = synth data pointer
+/// Destroyed registers:
+/// Pseudo code:
+///     x_param = [0..1]
+///     x_mod = [-1..1]
+///     resonance = resonance_param + resonance_mod
+///     frequency = frequency_param + frequency_mod
+///     squared_frequency = frequency * frequency
+///     high = input - ws.low - resonance * ws.band
+///     band = ws.band + squared_frequency * high
+///     low = ws.low + squared_frequency * ws.band
+///     ws.low = low
+///     ws.band = band
+///     output = 0
+///     if (LOWPASS flag):
+///         output += low
+///     if (HIGHPASS flag):
+///         output += high
+///     if (BANDPASS flag):
+///         output += band
+///     if (PEAK flag):
+///         output += low
+///         output -= high
+filter_function:
+    PUSH_LINK_REGISTER
+    // Transform parameters (1 value)
+    mov         x17, #2
+    bl          transform_values
+    // Load filter type into w17
+    ldrb        w17, [x4], #1
+    // Calculate frequency
+    ldr         s1, [x9, #FILTER_PARAM_FREQUENCY]
+    ldr         s2, [x7, #FILTER_WS_FREQUENCY_MOD]
+    fadd        s1, s1, s2
+    fmul        s1, s1, s1
+    // Load resonance
+    ldr         s2, [x9, #FILTER_PARAM_RESONANCE]
+    ldr         s3, [x7, #FILTER_WS_RESONANCE_MOD]
+    fadd        s2, s2, s3
+    // Load input value from top of VM stack
+    ldr         s4, [x8, #-4]
+    // Load current state variables
+    ldr         s3, [x7, #FILTER_WS_BAND]
+    ldr         s6, [x7, #FILTER_WS_LOW]
+    // Calculate high = input - ws.low - resonance * ws.band
+    fmul        s7, s2, s3          // s7 = resonance * ws.band
+    fsub        s8, s4, s6          // s8 = input - ws.low  
+    fsub        s8, s8, s7          // s8 = input - ws.low - resonance * ws.band (high)
+    // Calculate band = ws.band + squared_frequency * high
+    fmul        s7, s1, s8          // s7 = squared_frequency * high
+    fadd        s7, s3, s7          // s7 = ws.band + squared_frequency * high (band_new)
+    // Calculate low = ws.low + squared_frequency * ws.band
+    fmul        s9, s1, s3          // s9 = squared_frequency * ws.band (original band)
+    fadd        s9, s6, s9          // s9 = ws.low + squared_frequency * ws.band (low_new)
+    // Update state variables
+    str         s9, [x7, #FILTER_WS_LOW]     // ws.low = low
+    str         s7, [x7, #FILTER_WS_BAND]    // ws.band = band
+    // Prepare output
+        fmov        s0, #0.0
+    tst         w17, #FILTER_LOWPASS
+    b.eq        .not_lowpass
+    fadd        s0, s0, s9          // output += low
+.not_lowpass:
+    tst         w17, #FILTER_HIGHPASS
+    b.eq        .not_highpass
+    fadd        s0, s0, s8          // output += high
+.not_highpass:
+    tst         w17, #FILTER_BANDPASS
+    b.eq        .not_bandpass
+    fadd        s0, s0, s7          // output += band
+.not_bandpass:
+    tst         w17, #FILTER_PEAK
+    b.eq        .not_peak
+    fadd        s0, s0, s9          // output += low
+    fsub        s0, s0, s8          // output -= high
+.not_peak:
+    // Store output back to VM stack
+    str         s0, [x8, #-4]
     POP_LINK_REGISTER
     ret
 
@@ -901,8 +1062,8 @@ inv_128_const:      .float  0.0078125       // 1/128
 inv_12_const:       .float  0.0833333       // 1/12
 pi2_const:          .float  6.283185307    // 2*pi
 pi_const:           .float  3.1415927
-frequency_base:     .float  0.000092696138  // 220.0/(2^(69/12)) / 44100.0
-LFO_frequency_base: .float  0.000041106       // 90.0/(2^(69/12)) / 44100.0
+frequency_base:     .float  0.000185392  // 440.0/(2^(69/12)) / 44100.0
+LFO_frequency_base: .float  0.000041106    // LFO base frequency
 cos_c4:             .float  0.04166667
 
 
@@ -910,8 +1071,10 @@ twenty_four_const:  .float  24.0
 three_const:        .float  3.0
 ln2_const:          .float  0.693147   // ln(2)
 inv_ln2_const:      .float  1.442695   // 1/ln(2)
-frac_const1:        .float  0.6931     // coefficient for 2^x approximation
-frac_const2:        .float  0.2402     // coefficient for 2^x approximation
+pwr_c1:             .float  0.693147   // coefficient for 2^x approximation
+pwr_c2:             .float  0.240226   // coefficient for 2^x approximation
+pwr_c3:             .float  0.0555041  // coefficient for 2^x approximation
+pwr_c4:             .float  0.00961812 // coefficient for 2^x approximation
 
 
 .data
@@ -925,7 +1088,7 @@ instrument_instructions_lookup:
                     .quad oscillator_function
                     .quad storeval_function
                     .quad operation_function
-                    .quad 0 // filter_function (not implemented)
+                    .quad filter_function
                     .quad 0 // panning_function (not implemented)
                     .quad output_function
                     .quad accumulate_function

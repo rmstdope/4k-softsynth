@@ -8,10 +8,7 @@
 #include <vector>
 #include <string>
 #include <cstdint>
-
-// Forward declarations
-struct ParameterRange;
-struct ParameterEnum;
+#include "parameters.h"
 
 class Instrument
 {

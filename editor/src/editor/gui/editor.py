@@ -160,7 +160,7 @@ class Editor:
             self.components.status_panel.log_output("🎵 Playing note (Q key pressed)...")
 
             # Get audio data from synthesizer
-            audio_data = self.synth.render_instrument_note(self.current_instrument, 64)
+            audio_data = self.synth.render_instrument_note(self.current_instrument, 69)
 
             if audio_data is not None and len(audio_data) > 0:
                 # Play the audio if audio system is available

@@ -31,6 +31,120 @@
             "group": "build",
             "problemMatcher": ["$gcc"],
             "dependsOn": "make"
+        },
+        {
+            "label": "run_tests",
+            "type": "shell",
+            "command": "make",
+            "args": ["run_tests"],
+            "options": {
+                "cwd": "${workspaceFolder}/softsynth"
+            },
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": [],
+            "dependsOn": "make"
+        },
+        {
+            "label": "run_test_softsynth",
+            "type": "shell",
+            "command": "./bin/test_softsynth",
+            "options": {
+                "cwd": "${workspaceFolder}/softsynth"
+            },
+            "group": "test",
+            "problemMatcher": [],
+            "dependsOn": "make"
+        },
+        {
+            "label": "run_test_oscillator",
+            "type": "shell",
+            "command": "./bin/test_oscillator",
+            "options": {
+                "cwd": "${workspaceFolder}/softsynth"
+            },
+            "group": "test",
+            "problemMatcher": [],
+            "dependsOn": "make"
+        },
+        {
+            "label": "run_test_envelope",
+            "type": "shell",
+            "command": "./bin/test_envelope",
+            "options": {
+                "cwd": "${workspaceFolder}/softsynth"
+            },
+            "group": "test",
+            "problemMatcher": [],
+            "dependsOn": "make"
+        },
+        {
+            "label": "run_test_filter",
+            "type": "shell",
+            "command": "./bin/test_filter",
+            "options": {
+                "cwd": "${workspaceFolder}/softsynth"
+            },
+            "group": "test",
+            "problemMatcher": [],
+            "dependsOn": "make"
+        },
+        {
+            "label": "run_test_arithmetic",
+            "type": "shell",
+            "command": "./bin/test_arithmetic",
+            "options": {
+                "cwd": "${workspaceFolder}/softsynth"
+            },
+            "group": "test",
+            "problemMatcher": [],
+            "dependsOn": "make"
+        },
+        {
+            "label": "run_test_accumulate",
+            "type": "shell",
+            "command": "./bin/test_accumulate",
+            "options": {
+                "cwd": "${workspaceFolder}/softsynth"
+            },
+            "group": "test",
+            "problemMatcher": [],
+            "dependsOn": "make"
+        },
+        {
+            "label": "run_test_storeval",
+            "type": "shell",
+            "command": "./bin/test_storeval",
+            "options": {
+                "cwd": "${workspaceFolder}/softsynth"
+            },
+            "group": "test",
+            "problemMatcher": [],
+            "dependsOn": "make"
+        },
+        {
+            "label": "run_test_processing",
+            "type": "shell",
+            "command": "./bin/test_processing",
+            "options": {
+                "cwd": "${workspaceFolder}/softsynth"
+            },
+            "group": "test",
+            "problemMatcher": [],
+            "dependsOn": "make"
+        },
+        {
+            "label": "run_test_output",
+            "type": "shell",
+            "command": "./bin/test_output",
+            "options": {
+                "cwd": "${workspaceFolder}/softsynth"
+            },
+            "group": "test",
+            "problemMatcher": [],
+            "dependsOn": "make"
         }
     ]
 }
